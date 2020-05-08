@@ -1,6 +1,5 @@
 ################################# SHINY APP FOR QPCR ANALYSIS ############################################
 ########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################
-
 ui <- fluidPage(
   titlePanel(strong("qPCR Analysis")),
   sidebarLayout(
@@ -43,6 +42,7 @@ ui <- fluidPage(
           tabPanel("Data", tableOutput("incycles")),
           tabPanel("ID_Well", tableOutput("taqmanwell")),
           tabPanel("ID_Result", tableOutput("taqmanidres")),
+          tabPanel("C", tableOutput("c")),
           tabPanel("Info", tableOutput("info")),
           tabPanel("Indet Plots", plotOutput("indetplots"),
                    downloadButton("downloadIndet", "Download PNG"))

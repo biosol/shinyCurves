@@ -6,6 +6,8 @@ library(googledrive)
 library(reshape2)
 library(dplyr)
 library(cowplot)
+library(plyr)
+library(matrixStats)
 source("/home/sonia/Documentos/Covid19/shiny-app/ui.R")
 source("/home/sonia/Documentos/Covid19/shiny-app/server.R")
 

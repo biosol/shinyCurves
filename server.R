@@ -141,6 +141,11 @@ server <- function(input, output) {
     return(C)
   })
   
+  output$c <- renderTable({
+    C <- constVarendoC()
+    C
+  })
+  
   # c) Display info table
   output$info <- renderTable({
     inf <- combIDwellIDres()
@@ -154,9 +159,9 @@ server <- function(input, output) {
   ############################## READ ENDOC QPCR DATA ##########################################
   ## Read file
   taqDim <- reactive({
-    d.endoC <- input$dataendoC
-    if (!is.null(d.endoC)){
-      raw <- read.csv(d.endoC$datapath, sep = ',', header = TRUE, dec=',');
+    C <- constVarendoC()
+    if (!is.null(input$dataendoC)){
+      raw <- read.csv(input$dataendoC$datapath, sep = ";", header = TRUE, dec=",")
       raw<-raw[,-1]
       raw<-raw[,C$Well2]
       l<-round_any(rowMaxs(as.matrix(raw),value=T)[input$ct], 100, f = ceiling)
@@ -172,7 +177,17 @@ server <- function(input, output) {
   
   ############################# AMPLIFICATION CURVE PLOTS FOR EACH GENE (INDET) ################################# 
   indetPlots <- reactive({
-    df <- combIDwellIDres()
+    ## Define nrows for plot
+    result <- taqIDRes()
+    indet<-as.integer(dim(result[result$Interpretation=="Repeat",])[1])
+    if (indet<=15) {
+      indet=as.integer(5)
+    } else {
+      indet=as.integer(7)
+    }
+    
+    info <- combIDwellIDres()
+    lr <- taqDim()
     ## Select target gene wells
     df<-info[which(info$Target==gsub(".*[_]([^.]+)[.].*", "\\1", basename(input$taqmancsv$name))),] # select target
     df<-df[order(df$Well2),]
@@ -182,7 +197,7 @@ server <- function(input, output) {
     raw <- raw[,-1]
     raw <- raw[,df$Well2]
     raw_s <- stack(raw)
-    raw_s$cycles<-rep(1:input$ct,r) # rep(1:cycle number,sample number x2 replicates)
+    raw_s$cycles<-rep(1:input$ct,lr[2]) # rep(1:cycle number,sample number x2 replicates)
     colnames(raw_s)<-c("RFU","Well2","Cycles")
     merge<-merge(raw_s,df,by="Well2")
     
@@ -196,18 +211,14 @@ server <- function(input, output) {
     pltList <- list()
     for (z in 1:length(merge_r_persample)){
       pltName <- paste(gsub(".*[_]([^.]+)[.].*", "\\1", basename(input$taqmancsv$name)),"_",names(merge_r_persample)[[z]])
-      pltList[[ pltName ]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
+      pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
         geom_line()+
-        geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
-        ylim(-100, l)+ 
+        geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+        ylim(-100, lr[[1]])+ 
         theme(legend.position = "none")+ 
         ggtitle(paste(gsub(".*[_]([^.]+)[.].*", "\\1", basename(input$taqmancsv$name)),"_",names(merge_r_persample)[[z]]))
     }
     plot_grid(plotlist = pltList, ncol = 2, nrow=indet)
-    #do.call(grid.arrange, c(grobs=pltList,ncol=3,nrow=indet))
-    #pdf(file=paste0(genes[i],"_indet.pdf"),paper="a4",width = 8.27, height = 11.69)
-    #do.call(grid.arrange, c(grobs=pltList,ncol=3,nrow=indet))
-    #dev.off()
   })
   
   ## Render plots in app
