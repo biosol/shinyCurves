@@ -8,6 +8,7 @@ library(dplyr)
 library(cowplot)
 library(plyr)
 library(matrixStats)
+library(rlist)
 source("/home/sonia/Documentos/Covid19/shiny-app/ui.R")
 source("/home/sonia/Documentos/Covid19/shiny-app/server.R")
 
