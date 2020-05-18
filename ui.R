@@ -75,23 +75,23 @@ ui <- fluidPage(
           tabPanel("Fluo_Temp", tableOutput("fluotemp")),
           tabPanel("TM Plots", 
                    tabsetPanel(
-                     tabPanel("N",
+                       tabPanel("N",
                               fluidRow(plotOutput("sybrN", height = "1000px"),
                                        downloadButton("downsybrN", "Download PDF"))
                        
-                     ),
-                     tabPanel("Rdrp",
+                       ),
+                       tabPanel("Rdrp",
                               fluidRow(plotOutput("sybrRdrp", height = "1000px"),
                                        downloadButton("downsybrRdrp", "Download PDF"))
-                     ),
-                     tabPanel("Rpp30",
+                      ),
+                      tabPanel("Rpp30",
                               fluidRow(plotOutput("sybrRpp30", height = "1000px"),
                                        downloadButton("downsybrRpp30", "Download PDF"))
-                    ),
-                    tabPanel("S",
+                      ),
+                      tabPanel("S",
                              fluidRow(plotOutput("sybrS", height = "1000px"),
                                       downloadButton("downsybrS", "Download PDF"))
-                    )
+                      )
                   )), 
           tabPanel("TM Table", tableOutput("tmtable"),
                    downloadButton("downloadtable", "Download"),

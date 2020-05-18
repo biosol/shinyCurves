@@ -14,14 +14,19 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       checkboxInput("taqman", "Taqman"),
+      ###### Sidebar panel appears only of Taqman is checked ########
       conditionalPanel(
         condition = "input.taqman == true",
         fileInput("taqmancsv",
                   label = "Upload CSV here",
                   multiple = FALSE),
-        numericInput("cycles", "Enter PCR number of cycles", value = 40),
-        textInput("endoC", "Enter endogenous control", value = "RNAseP")
+        numericInput("ct", "Enter PCR number of cycles", value = 40),
+        textInput("endoC", "Enter endogenous control", value = "RNAseP"),
+        fileInput("dataendoC", "Enter qPCR results for endoC"),
+        fileInput("taqwellid", label = "Upload ID_well.csv here"),
+        fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
+      ###### Sidebar panel appears only of SYBR is checked ########
       checkboxInput("sybr", "SYBR"),
       conditionalPanel(
         condition = "input.sybr == true",
@@ -33,14 +38,27 @@ ui <- fluidPage(
                                  False = FALSE),
                      selected = TRUE),
         fileInput("wellid",
-                  label="Upload well_id.csv here"),
+                  label="Upload ID_well.csv here"),
       )
     ),
     mainPanel(
+      ###### Main panel appears only of Taqman is checked ########
+      conditionalPanel(
+        condition = "input.taqman == true",
+        tabsetPanel(
+          id = "taq",
+          type = "tabs",
+          tabPanel("Data", tableOutput("incycles")),
+          tabPanel("ID_Well", tableOutput("taqmanwell")),
+          tabPanel("ID_Result", tableOutput("taqmanidres")),
+          tabPanel("Info", tableOutput("info"))
+        )
+      ),
+      ###### Main panel appears only of SYBR is checked ########
       conditionalPanel(
         condition = "input.sybr == true",
         tabsetPanel(
-        id = "abcd",
+        id = "syb",
         type = "tabs",
         tabPanel("Gene", tableOutput("tables")),
         tabPanel("Plate Map", tableOutput("well")),
@@ -112,7 +130,30 @@ server <- function(input, output) {
     }
   })
   
-  ################################## READ WELL-ID FILE ###########################################
+  ############################## READ TAQMAN ID-WELL FILE ############################################
+  ## 3) Well id
+  taqwellID <- reactive({
+    raw <- input$taqwellid
+    if (!is.null(raw)){
+      data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
+      colnames(data)[3] <- "ID"
+      return(data)
+    }else{
+      return (NULL);
+    }  
+  })
+  ## b) Call function and display in app
+  output$taqmanwell <- renderTable({
+    newWell = taqwellID()
+    if(is.null(newWell)){
+      return();
+    }else{
+      newWell;
+    }
+  })
+  
+  
+  ################################## READ SYBR ID-WELL FILE ###########################################
   ## 3) Well id
   wellID <- reactive({
     raw <- input$wellid
@@ -134,6 +175,70 @@ server <- function(input, output) {
       newWell;
     }
   })
+  
+  ############################# READ TAQMAN ID_RESULTS FILE ###################################
+  ## Read file
+  taqIDRes <- reactive({
+    idres <- input$taqidres
+    if (!is.null(idres)){
+      data <- read.csv(idres$datapath, sep = ',', header = TRUE, dec=',');
+      data <- data[,-3] 
+      return(data)
+    }
+  })
+  
+  ## Display table 
+  output$taqmanidres <- renderTable({
+    res <- taqIDRes()
+    if(is.null(res)){
+      return();
+    }else{
+      res;
+    }
+  })
+  
+  ############################# COMBINE ID_WELL AND ID_RESULTS FILE #################################
+  constVarendoC <- reactive({
+    wellid <- taqwellID()
+    idres <- taqIDRes()
+    info <-merge(idres,wellid,by="ID")
+    info$Well2<-sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE)
+    info<-as.data.frame(info)
+    
+    # set constant variables from endogenous control data
+    C<-info[which(info$Target==input$endoC),] # select target
+    C<-C[order(C$Well2),]
+    return(C)
+  })
+  
+  output$info <- renderTable({
+    inf <- constVarendoC()
+    if(is.null(inf)){
+      return();
+    }else{
+      inf;
+    }
+  })
+  
+  ############################## READ ENDOC QPCR DATA ##########################################
+  ## Read file
+  taqDim <- reactive({
+    d.endoC <- input$dataendoC
+    if (!is.null(d.endoC)){
+      raw <- read.csv(d.endoC$datapath, sep = ',', header = TRUE, dec=',');
+      raw<-raw[,-1]
+      raw<-raw[,C$Well2]
+      l<-round_any(rowMaxs(as.matrix(raw),value=T)[input$ct], 100, f = ceiling)
+      l<-as.integer(l)
+      r<-dim(raw)
+      r<-r[2]
+      r<-as.integer(r)
+      lr <- list(l,r)
+      print(lr)
+      return(lr)
+      }
+  })
+  
   
   ############################## PICK GENE COLUMNS FROM FLUORESCENCE FILE ###############################3
   

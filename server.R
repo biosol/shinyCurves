@@ -350,11 +350,21 @@ server <- function(input, output) {
   ############################## PICK GENE COLUMNS FROM FLUORESCENCE FILE ###############################3
   ## 4) Select target gene and match columns in fluorescence file
   # a) Define function
-  matchTarget <- reactive({
+  ## matchTarget por archivo independiente
+  matchTarget <- function(tm, gene){
+    Well <- wellID()
+    well_gene <- Well[which(Well$Target==gene),] # select target
+    #Select fluorescence matching columns
+    fluos_gene<-tm[,well_gene$Well2]
+    return(fluos_gene)
+  }
+  
+  ## Misma función que matchTarget pero con un loop para guardar todos los archivos en la misma tabla
+  ## Bastante guarro, pero funciona
+  matchAllTarget <- reactive({
     Well <- wellID()
     genes <- SybrGeneList()
     melt_gene <- TMinput()
-    #target <- unique(melt_gene$Gene)
     matchLs <- list()
     for (i in 1:length(genes)){
       #Select matching target rows from well_id
@@ -372,7 +382,7 @@ server <- function(input, output) {
   
   ## Prepare data
   fluoTemp <- reactive({
-    fluos_gene <- matchTarget()
+    fluos_gene <- matchAllTarget()
     melt_gene <- TMinput()
     genes <- SybrGeneList()
     LsforPlot <- list()
@@ -396,81 +406,86 @@ server <- function(input, output) {
     matrix(rep(x,each=n), ncol=n, byrow=TRUE)
   }
   
-  TMPlots <- reactive({
-    melt_gene <- TMinput()
-    fluos_gene <- matchTarget()
-    genes <- SybrGeneList()
-    
-    pltList <- list()
-    for (i in 1:length(genes)){
-      a<-dim(fluos_gene[[i]])
-      b<-a[2]
-      c<-as.integer(b+1)
-      d<-as.integer(2*b)
-      data_gene <- cbind(fluos_gene[[i]],rep.col(melt_gene[[i]]$Temperature,b))
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
-      pltList[[i]] <- res_gene
-    }
-    return(pltList)
-  })
-  
-  'TMPlots <- function(){
-    #Combine all input genes
-    melt_gene <- TMinput()
-    melt_gene_df <- list.cbind(melt_gene)
-    melt_gene_df<- melt_gene_df[, !duplicated(colnames(melt_gene_df))]
-    
-    # Combine gene fluo data
-    fluos_gene <- matchTarget()
-    fluos_gene_df <- list.cbind(fluos_gene)
-    fluos_gene_df <- fluos_gene_df[, !duplicated(colnames(fluos_gene_df))]
-    
-    # Plot all Tm together (for all genes)
-    a<-dim(fluos_gene_df)
+  TMPlots <- function(tm, gene){
+    fluos_gene <- matchTarget(tm, gene)
+    a<-dim(fluos_gene)
     b<-a[2]
+    print(b)
     c<-as.integer(b+1)
     d<-as.integer(2*b)
-    data_gene <- cbind(fluos_gene_df,rep.col(melt_gene_df$Temperature,b))
-    res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
-  }'
+    data_gene <- cbind(fluos_gene,rep.col(tm$Temperature,b))
+    if (input$isderiv == TRUE){
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
+    } else if (input$isderiv == FALSE){
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5))
+    }
+  }
   
+  ##### b) Render plots
   output$sybrN <- renderPlot({
-    TMPlots()[[1]]
+    tm <- TMinput()
+    genes <- SybrGeneList()
+    TMPlots(tm[[1]], genes[[1]])
   })
   
   output$sybrRdrp <- renderPlot({
-    TMPlots()[[2]]
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[2]], genes[[2]])
   })
   
   output$sybrRpp30 <- renderPlot({
-    TMPlots()[[3]]
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[3]], genes[[3]])
   })
   
   output$sybrS <- renderPlot({
-    TMPlots()[[4]]
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[4]], genes[[4]])
   })
   
+  ## c) Downloads
   output$downsybrN <- downloadHandler(
     filename = ("N_TMPlots.pdf"),
     content = function(file){
-      p <- TMPlots()[[1]]
-      save_plot(file, p, base_height = 8, base_width = 4)
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[1]], genes[[1]])
+      dev.off()
     })
   
-  # b) Display output in app
-  'output$TM <- renderPlot({
-    TMPlots()
-  })'
-  
-  ## c) Download plot
-  output$downloadTMplots <- downloadHandler(
-    filename = "TMplots.pdf",
+  output$downsybrRdrp <- downloadHandler(
+    filename = ("Rdrp_TMPlots.pdf"),
     content = function(file){
       pdf(file)
-      TMPlots()
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[2]], genes[[2]])
       dev.off()
-    }
-  )
+    })
+  
+  output$downsybrRpp30 <- downloadHandler(
+    filename = ("Rdrp_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[3]], genes[[3]])
+      dev.off()
+    })
+  
+  output$downsybrS <- downloadHandler(
+    filename = ("S_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[4]], genes[[4]])
+      dev.off()
+    })
   
   ############################## TM RESULTS ##################################
   ## 7) Load data and generate output table
@@ -478,7 +493,7 @@ server <- function(input, output) {
   TMTable <- reactive({
     #Combine all input genes
     melt_gene <- TMinput()
-    fluos_gene <- matchTarget()
+    fluos_gene <- matchAllTarget()
     genes <- SybrGeneList()
     
     results_all <- list()
@@ -515,7 +530,7 @@ server <- function(input, output) {
     return(results)
   })
   
-  # b) Display table in app
+  ## b) Render table
   output$tmtable <-renderTable({
     TMTable()
     })
