@@ -17,6 +17,21 @@ ui <- fluidPage(
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
+      checkboxInput("taqexcel", "TaqManExcel"),
+      conditionalPanel(
+        condition = "input.taqexcel == true",
+        fileInput("biorad", 
+                  label = "Upload BioRad CFX results file",
+                  ),
+        fileInput("applied", 
+                  label = "Upload Applied Quant Studio file")
+      ),
+      checkboxInput("app", "Taqman: Applied Quant Studio"),
+      conditionalPanel(
+        condition = "input.app == true",
+        fileInput("appl",
+                  label = "Upload Applied Quant Studio xlsx")
+      ),
       ###### Sidebar panel appears only of SYBR is checked ########
       checkboxInput("sybr", "SYBR"),
       conditionalPanel(
@@ -32,8 +47,31 @@ ui <- fluidPage(
                   label="Upload ID_well.csv here")
       )
     ),
+    
     mainPanel(
-      ###### Main panel appears only of Taqman is checked ########
+      ###### Main panel appears only of Taqman Excel is checked ########
+      conditionalPanel(
+        condition = "input.taqexcel == true",
+        tabsetPanel(
+          id = "taqex",
+          type = "tabs",
+          tabPanel("Empty Plate", dataTableOutput("plate")),
+          tabPanel("Input DF", tableOutput("inputdf")),
+          tabPanel("Run Information", tableOutput("BRruninfo")),
+          tabPanel("Cq Plate", dataTableOutput("cqplate")),
+          tabPanel("Sample Plate", dataTableOutput("sampleplate")),
+          tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
+          tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
+          tabPanel("Standard Curve", 
+                   fluidRow(
+                     DT::dataTableOutput("stdcurve"),
+                     plotOutput("std"))
+          ),
+          tabPanel("Analysis Samples", dataTableOutput("analysis")),
+          tabPanel("ID_Well", tableOutput("IDWELL"))
+        )
+      ),
+      ########### Taqman Amplification Curves ###############
       conditionalPanel(
         condition = "input.taqman == true",
         tabsetPanel(
@@ -48,19 +86,31 @@ ui <- fluidPage(
           tabPanel("Indet Plots", 
                    tabsetPanel(
                      tabPanel("N1",
-                              fluidRow(plotOutput("n1", height = "1000px"),
+                              fluidRow(plotOutput("n1", height = "500px"),
                                        downloadButton("downln1", "Download PDF"))
                      ),
                      tabPanel("N2",
-                              fluidRow(plotOutput("n2", height = "1000px"),
+                              fluidRow(plotOutput("n2", height = "500px"),
                                        downloadButton("downln2", "Download PDF"))
                      ),
                      tabPanel("RNAseP",
-                              fluidRow(plotOutput("rnasep", height = "1000px"),
+                              fluidRow(plotOutput("rnasep", height = "500px"),
                                        downloadButton("downrnasep", "Download PDF"))
                      )
                    )
-           )
+          )
+        )
+      ),
+      conditionalPanel(
+        condition = "input.app == true",
+        tabsetPanel(
+          id = "blabla",
+          type = "tabs",
+          tabPanel("Raw Data", tableOutput("prueba")),
+          tabPanel("Transposed", tableOutput("trans")),
+          tabPanel("N1", tableOutput("transN1")),
+          tabPanel("N2", tableOutput("transN2")),
+          tabPanel("RNAseP", tableOutput("transRNAsep"))
         )
       ),
       ###### Main panel appears only of SYBR is checked ########
@@ -69,7 +119,6 @@ ui <- fluidPage(
         tabsetPanel(
           id = "syb",
           type = "tabs",
-          #tabPanel("Gene", tableOutput("tables")),
           tabPanel("ID_well", tableOutput("well")),
           tabPanel("Fluos_Gene", tableOutput("fluosgene")),
           tabPanel("Fluo_Temp", tableOutput("fluotemp")),
@@ -78,7 +127,6 @@ ui <- fluidPage(
                        tabPanel("N",
                               fluidRow(plotOutput("sybrN", height = "1000px"),
                                        downloadButton("downsybrN", "Download PDF"))
-                       
                        ),
                        tabPanel("Rdrp",
                               fluidRow(plotOutput("sybrRdrp", height = "1000px"),

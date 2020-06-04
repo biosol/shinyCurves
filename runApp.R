@@ -9,6 +9,13 @@ library(cowplot)
 library(plyr)
 library(matrixStats)
 library(rlist)
+library(DT)
+library(readxl)
+library(ggpmisc)
+library(gridExtra)
+library(outviz)
+library(tidyverse)
+library(janitor)
 source("/home/sonia/Documentos/Covid19/shiny-app/ui.R")
 source("/home/sonia/Documentos/Covid19/shiny-app/server.R")
 
@@ -17,3 +24,7 @@ setwd("/home/sonia/Documentos/Covid19/shiny-app/")
 app <- shinyApp(ui = ui, server = server)
 #Run app
 runApp()
+
+
+# Example of shiny app paper  
+#https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0229330
