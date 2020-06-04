@@ -628,6 +628,7 @@ server <- function(input, output) {
       mutate_if(is.numeric, round, digits = 3)
     return(dt)
   })
+  
     ## Convert to datatable to render nicely in shiny
   printCqPlate <- reactive({
     dt <- cqPlate()
@@ -869,7 +870,6 @@ server <- function(input, output) {
   
   
   ############ Plate Setup MultiChanel #################### 
-  
   setupMultiC <- reactive({
     def <- checkSamples()
     col1 <- rep(paste("S",1:60, sep = ""),each =2)
@@ -1040,7 +1040,6 @@ server <- function(input, output) {
   
   ###########################################################################
   ######################### APPLIED QUANT STUDIO ############################
-  
   readApplied <- reactive({
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Raw Data")
@@ -1129,6 +1128,290 @@ server <- function(input, output) {
     content = function(fname){
       write.csv(getGenes()[3], fname, quote = F, row.names = F)}
   )
+  
+  ### Run Info ###
+  readAppliedRunInfo <- reactive({
+    res <- input$appl
+    samples <- read_xlsx(res$datapath, sheet = "Results")
+    df <- data.frame(samples)
+    df <- df[1:44,]
+    return(df)
+  })
+  
+  output$appliedruninfo <- renderTable({
+    readAppliedRunInfo()
+  })
+  
+  ## Read Applied Results sheet ##
+  readAppliedResults <- reactive({
+    res <- input$appl
+    samples <- read_xlsx(res$datapath, sheet = "Results")
+    df <- data.frame(samples)
+    df <- df[-c(1:44),c(1,2,4,7,9)]
+    colnames(df) <- c("Well", "Well_Position","Sample", "Fluor","Cq")
+    return(df)
+  })
+  
+  output$appliedres <- renderTable({
+    readAppliedResults()
+  })
+  
+  #### Cq values Plate for Applied ###
+  cqPlateApp <- reactive({
+    inp <- readAppliedResults()
+    dt <- data.frame(matrix(nrow = 16, ncol = 24))
+    s <- 1
+    e <- 24
+    for (i in 1:16){
+      dt[i,] <- inp$Cq[s:e]
+      s <- s + 24
+      e <- e + 24
+    }
+    dt <- dt %>% 
+      mutate_if(is.numeric, round, digits = 3)
+    return(dt)
+  })
+  
+  ## Convert to datatable to render nicely in shiny
+  printCqPlateApp <- reactive({
+    dt <- cqPlateApp()
+    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1:8,
+        backgroundColor = "yellow"
+      ) %>%
+      formatStyle(
+        columns = 9:16,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 17:24,
+        backgroundColor = "lightblue")
+    return(f)
+  })
+  
+  output$cqplateapp<- DT::renderDataTable(
+    printCqPlateApp()
+  )
+  
+  ############# Sample Plate for Applied ##########################
+  samplePlateApp <- reactive({
+    inp <- readAppliedResults()
+    dt <- data.frame(matrix(nrow = 16, ncol = 24))
+    s <- 1
+    e <- 24
+    for (i in 1:16){
+      dt[i,] <- inp$Sample[s:e]
+      s <- s + 24
+      e <- e + 24
+    }
+    return(dt)
+  })
+  ## Convert to datatable to render nicely in shiny
+  printSamplePlateApp <- reactive({
+    dt <- samplePlateApp()
+    defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1:8,
+        backgroundColor = "yellow"
+      ) %>%
+      formatStyle(
+        columns = 9:16,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 17:24,
+        backgroundColor = "lightblue")
+    return(f)
+  })
+  
+  output$sampleplateapp<- renderDataTable(
+    printSamplePlateApp()
+  )
+  
+  #################### Check Sample plates for Applied #######################
+  checkSamplesApp <- reactive({
+    s <- samplePlateApp()
+    first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
+    second <- data.frame(d = unlist(s[9:16], use.names = FALSE))
+    third <- data.frame(d = unlist(s[17:24], use.names = FALSE))
+    all <- cbind(first, second, third)
+    colnames(all) <- c("first", "second", "third")
+    #def <- head(all, 120)
+    def <- all[complete.cases(all),]
+    
+    ## Add "coinciden" to script 
+    for (i in 1:nrow(def)){
+      if (def[i,"first"] == def[i, "second"] && def[i,"first"] == def[i, "third"]){
+        def$Check[i] <- "Coinciden"
+      } else {
+        def$Check[i] <- "No coinciden"
+      }
+    }
+    return(def)
+  })
+  
+  ## Convert to datatable to render nicely in shiny
+  checkSamplesAppDT <- reactive({
+    def <- checkSamplesApp()
+    defdt <- datatable(def, rownames = F,  options = list(pageLength = 60))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1,
+        backgroundColor = "yellow"
+      ) %>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 3,
+        backgroundColor = "lightblue"
+      ) %>%
+      formatStyle(
+        columns = 4,
+        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'red'))
+      )
+    return(f)
+  })
+  
+  ##### Render Table ####
+  output$samplecheckapp <- renderDataTable(
+    checkSamplesAppDT()
+  )
+  
+  ################### Analysis Standard Curve for Applied #####################
+  stCurveApp <- reactive({
+    a <- data.frame(matrix(0, nrow = 5, ncol = 19))
+    colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
+    a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
+    a$Dilution <- c("-","-",100,1000,100000)
+    a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]))
+    a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
+    
+    cq <- cqPlateApp()
+    a$N1_dup1 <- c(cq[9,8],'-',cq[15,8],cq[13,8], cq[11,8])
+    a$N2_dup2 <- c(cq[9,16],'-',cq[15,16],cq[13,16], cq[11,16])
+    a$RNAseP_dup1 <- c(cq[9,24],cq[15,24],'-','-','-')
+    a$N1_dup2 <- c(cq[10,8],'-',cq[16,8],cq[14,8], cq[12,8])
+    a$N2_dup2 <- c(cq[10,16],'-',cq[16,16],cq[14,16], cq[12,16])
+    a$RNAseP_dup2 <- c(cq[10,24],cq[16,24],'-','-','-')
+    a$N1_avg <- c(mean(c(cq[9,8],cq[10,8])), "-", mean(c(cq[15,8], cq[16,8])), mean(c(cq[13,8], cq[14,8])), mean(c(cq[11,8], cq[12,8])))
+    a$N2_avg <- c(mean(c(cq[9,16],cq[10,16])), "-", mean(c(cq[15,16], cq[16,16])), mean(c(cq[13,16], cq[14,16])), mean(c(cq[11,16], cq[12,16])))
+    a$RNAseP_avg <- c(mean(c(cq[9,24],cq[10,24])), "-", mean(c(cq[15,24], cq[16,24])), mean(c(cq[13,24], cq[14,24])), mean(c(cq[11,24], cq[12,24])))
+    return(a)
+  })
+  
+  #### Convert to datatable ####
+  stCurveAppDT <- reactive({
+    a <- stCurveApp()
+    ## Transform into data table
+    defdt <- datatable(a, rownames = F)
+    dt <- defdt %>%
+      formatStyle(
+        columns = c(5,8,11),
+        backgroundColor = "yellow"
+      )%>%
+      formatStyle(
+        columns = c(6,9,12),
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = c(7,10,13),
+        backgroundColor = "lightblue"
+      )
+    
+    return(dt)
+  })
+  
+  ##### Render Table ####
+  output$stdcurveapp <- renderDataTable(
+    stCurveAppDT()
+  )
+  
+  ################### Standard Curve Plots ###########################
+  stdCoeffsApp <- function(){
+    a <- stCurveApp()
+    n1 <- a$N1_avg[3:5]
+    n2 <- a$N2_avg[3:5]
+    cp <- a$`log(copies)`[3:5]
+    p <- as.data.frame(cbind(as.numeric(n1),as.numeric(n2) , as.numeric(cp)))
+    colnames(p) <- c("n1", "n2", "cp")
+    
+    model_n1 <- lm(cp ~ n1, p)
+    n1_coeff1 <- as.numeric(model_n1$coefficients[1])
+    n1_coeff2 <- as.numeric(model_n1$coefficients[2])
+    n1_coeff <- as.data.frame(cbind(n1_coeff1, n1_coeff2))
+    colnames(n1_coeff) <- c("Intercept", "Slope")
+    
+    model_n2 <- lm(cp ~ n2, p)
+    n2_coeff1 <- as.numeric(model_n2$coefficients[1])
+    n2_coeff2 <- as.numeric(model_n2$coefficients[2])
+    n2_coeff <- as.data.frame(cbind(n2_coeff1, n2_coeff2))
+    colnames(n2_coeff) <- c("Intercept", "Slope")
+    
+    coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
+    rownames(coeff) <- c("N1", "N2")
+    
+    return(coeff)
+  }
+  
+  stdPlotsApp <- reactive({
+    a <- stCurveApp()
+    
+    n11 <- a$N1_avg[3:5]
+    n22 <- a$N2_avg[3:5]
+    cpp <- a$`log(copies)`[3:5]
+    p <- as.data.frame(cbind(as.numeric(n11),as.numeric(n22),as.numeric(cpp)))
+    colnames(p) <- c("n1", "n2", "cp")
+    
+    p1 <- ggplot(p, aes(x=n1, y = cp)) + 
+      geom_point()+
+      geom_smooth(method = lm, se = F) +
+      stat_poly_eq(formula = cp ~ n1,
+                   label.x.npc = "right", label.y.npc = "top",
+                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                   parse = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(p)[1])))+
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+      xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
+      ylab("log(Copies)")
+    
+    p2 <- ggplot(p, aes(x=n2, y = cp)) + 
+      geom_point()+
+      geom_smooth(method = lm, se = F) +
+      stat_poly_eq(formula = cp ~ n2, 
+                   label.x.npc = "right", label.y.npc = "top",
+                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   parse = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(p)[2])))+
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+      xlab(paste("Dilutions",toupper(colnames(p)[2]))) +
+      ylab("log(Copies)")
+    
+    s <- grid.arrange(p1, p2, nrow = 1)
+    return(s)
+    
+  })
+  
+  output$stdapp <- renderPlot(
+    stdPlotsApp()
+  )
+  
+  ############## ID Well for Applied ###############
+  IDWELLtabApp <- reactive({
+    inp <- readAppliedResults()
+    wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
+    colnames(wellid) <- c("Well", "Target", "Sample")
+    return(wellid)
+  })
+  
+  output$IDWELLApp <- renderTable(
+    IDWELLtabApp()
+  )
+  
   
 }
   

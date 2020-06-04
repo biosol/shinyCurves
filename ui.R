@@ -60,7 +60,7 @@ ui <- fluidPage(
           tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
           tabPanel("Standard Curve", 
                    fluidRow(
-                     DT::dataTableOutput("stdcurve"),
+                     dataTableOutput("stdcurve"),
                      plotOutput("std"))
           ),
           tabPanel("Analysis Samples", dataTableOutput("analysis")),
@@ -114,7 +114,14 @@ ui <- fluidPage(
                    tableOutput("transN2")),
           tabPanel("RNAseP",
                    downloadButton("downtransRNAseP", "Download CSV"),
-                   tableOutput("transRNAsep"))
+                   tableOutput("transRNAsep")),
+          tabPanel("Run Info", tableOutput("appliedruninfo")),
+          tabPanel("Applied Results", tableOutput("appliedres")),
+          tabPanel("Cq Plate", dataTableOutput("cqplateapp")),
+          tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
+          tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
+          tabPanel("Std Curves", dataTableOutput("stdcurveapp"), plotOutput("stdapp")),
+          tabPanel("ID Well", tableOutput("IDWELLApp"))
         )
       ),
       ###### Main panel appears only of SYBR is checked ########
