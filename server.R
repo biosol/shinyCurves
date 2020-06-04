@@ -332,12 +332,13 @@ server <- function(input, output) {
   })
   
   output$fluosgene <- renderTable({
-    matchTarget()
+    matchAllTarget()
   })
   
   ## Prepare data
   fluoTemp <- reactive({
     fluos_gene <- matchAllTarget()
+    print(fluos_gene)
     melt_gene <- TMinput()
     genes <- SybrGeneList()
     LsforPlot <- list()
@@ -449,6 +450,7 @@ server <- function(input, output) {
     #Combine all input genes
     melt_gene <- TMinput()
     fluos_gene <- matchAllTarget()
+    print(fluos_gene)
     genes <- SybrGeneList()
     
     results_all <- list()
