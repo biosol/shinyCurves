@@ -1103,14 +1103,32 @@ server <- function(input, output) {
     getGenes()[1]
   )
   
+  ## Download plots
+  output$downtransN1 <- downloadHandler(
+    filename = "N1.csv",
+    content = function(fname){
+      write.csv(getGenes()[1], fname, quote = F, row.names = F)}
+  )
+  
   output$transN2 <- renderTable(
     getGenes()[2]
+  )
+  
+  output$downtransN2 <- downloadHandler(
+    filename = "N2.csv",
+    content = function(fname){
+      write.csv(getGenes()[2], fname, quote = F, row.names = F)}
   )
   
   output$transRNAsep <- renderTable(
     getGenes()[3]
   )
   
+  output$downtransRNAseP <- downloadHandler(
+    filename = "RNAseP.csv",
+    content = function(fname){
+      write.csv(getGenes()[3], fname, quote = F, row.names = F)}
+  )
   
 }
   
