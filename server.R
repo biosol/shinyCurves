@@ -338,7 +338,6 @@ server <- function(input, output) {
   ## Prepare data
   fluoTemp <- reactive({
     fluos_gene <- matchAllTarget()
-    print(fluos_gene)
     melt_gene <- TMinput()
     genes <- SybrGeneList()
     LsforPlot <- list()
@@ -366,7 +365,6 @@ server <- function(input, output) {
     fluos_gene <- matchTarget(tm, gene)
     a<-dim(fluos_gene)
     b<-a[2]
-    print(b)
     c<-as.integer(b+1)
     d<-as.integer(2*b)
     data_gene <- cbind(fluos_gene,rep.col(tm$Temperature,b))
@@ -450,7 +448,6 @@ server <- function(input, output) {
     #Combine all input genes
     melt_gene <- TMinput()
     fluos_gene <- matchAllTarget()
-    print(fluos_gene)
     genes <- SybrGeneList()
     
     results_all <- list()
@@ -738,8 +735,7 @@ server <- function(input, output) {
     checkSamplesDT()
   )
   
-  ################### Analysis Standard Curve #####################
-  
+  ################### Analysis Standard Curve ####################
   stCurve <- reactive({
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
@@ -749,15 +745,74 @@ server <- function(input, output) {
     a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
     
     cq <- cqPlate()
-    a$N1_dup1 <- c(cq[9,8],'-',cq[15,8],cq[13,8], cq[11,8])
-    a$N2_dup2 <- c(cq[9,16],'-',cq[15,16],cq[13,16], cq[11,16])
-    a$RNAseP_dup1 <- c(cq[9,24],cq[15,24],'-','-','-')
-    a$N1_dup2 <- c(cq[10,8],'-',cq[16,8],cq[14,8], cq[12,8])
-    a$N2_dup2 <- c(cq[10,16],'-',cq[16,16],cq[14,16], cq[12,16])
-    a$RNAseP_dup2 <- c(cq[10,24],cq[16,24],'-','-','-')
-    a$N1_avg <- c(mean(c(cq[9,8],cq[10,8])), "-", mean(c(cq[15,8], cq[16,8])), mean(c(cq[13,8], cq[14,8])), mean(c(cq[11,8], cq[12,8])))
-    a$N2_avg <- c(mean(c(cq[9,16],cq[10,16])), "-", mean(c(cq[15,16], cq[16,16])), mean(c(cq[13,16], cq[14,16])), mean(c(cq[11,16], cq[12,16])))
-    a$RNAseP_avg <- c(mean(c(cq[9,24],cq[10,24])), "-", mean(c(cq[15,24], cq[16,24])), mean(c(cq[13,24], cq[14,24])), mean(c(cq[11,24], cq[12,24])))
+    a$N1_dup1 <- as.numeric(c(cq[9,8],NA,cq[15,8],cq[13,8], cq[11,8]))
+    a$N2_dup1 <- as.numeric(c(cq[9,16],NA,cq[15,16],cq[13,16], cq[11,16]))
+    a$RNAseP_dup1 <- as.numeric(c(cq[9,24],cq[15,24],NA,NA,NA))
+    a$N1_dup2 <- as.numeric(c(cq[10,8],NA,cq[16,8],cq[14,8], cq[12,8]))
+    a$N2_dup2 <- as.numeric(c(cq[10,16],NA,cq[16,16],cq[14,16], cq[12,16]))
+    a$RNAseP_dup2 <- as.numeric(c(cq[10,24],cq[16,24],NA,NA,NA))
+    a$N1_avg <- c(NA,NA,mean(c(a$N1_dup1[3], a$N1_dup2[3]), na.rm = T), mean(c(a$N1_dup1[4], a$N1_dup2[4]), na.rm = T), mean(c(a$N1_dup1[5], a$N1_dup2[5]), na.rm = T))
+    a$N2_avg <- c(NA,NA,mean(c(a$N2_dup1[3], a$N2_dup2[3]), na.rm = T), mean(c(a$N2_dup1[4], a$N2_dup2[4]), na.rm = T), mean(c(a$N2_dup1[5], a$N2_dup2[5]), na.rm = T))
+    a$RNAseP_avg <- c(NA,mean(c(a$RNAseP_dup1[2], a$RNAseP_dup2[2]), na.rm = T),mean(c(a$RNAseP_dup1[3], a$RNAseP_dup2[3]), na.rm = T), mean(c(a$RNAseP_dup1[4], a$RNAseP_dup2[4]), na.rm = T), mean(c(a$RNAseP_dup1[5], a$RNAseP_dup2[5]), na.rm =T))
+    
+    ################### Coefficients ####################
+    n1 <- a$N1_avg[3:5]
+    n2 <- a$N2_avg[3:5]
+    cp <- a$`log(copies)`[3:5]
+    p <- as.data.frame(cbind(as.numeric(n1),as.numeric(n2) , as.numeric(cp)))
+    colnames(p) <- c("n1", "n2", "cp")
+    
+    model_n1 <- lm(cp ~ n1, p)
+    n1_coeff1 <- as.numeric(model_n1$coefficients[1])
+    n1_coeff2 <- as.numeric(model_n1$coefficients[2])
+    n1_coeff <- as.data.frame(cbind(n1_coeff1, n1_coeff2))
+    colnames(n1_coeff) <- c("Intercept", "Slope")
+    
+    model_n2 <- lm(cp ~ n2, p)
+    n2_coeff1 <- as.numeric(model_n2$coefficients[1])
+    n2_coeff2 <- as.numeric(model_n2$coefficients[2])
+    n2_coeff <- as.data.frame(cbind(n2_coeff1, n2_coeff2))
+    colnames(n2_coeff) <- c("Intercept", "Slope")
+    
+    coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
+    rownames(coeff) <- c("N1", "N2")
+    ###############################################################
+    ## log(Copies) ##
+    for (i in 1:length(a$N1_avg)){
+      if(is.na(a$N1_avg[i])== TRUE){
+        a$N1_logcop[i] <- NA
+      }else{
+        a$N1_logcop[i] <- a$N1_avg[i]*coeff[1,2]+coeff[1,1]
+      }
+      if(is.na(a$N2_avg[i])== TRUE){
+        a$N2_logcop[i] <- NA
+      }else{
+        a$N2_logcop[i] <- a$N2_avg[i]*coeff[2,2]+coeff[2,1]
+      }
+      if(is.na(a$RNAseP_avg[i])== TRUE){
+        a$RNAseP_logcop[i] <- NA
+      }else{
+        a$RNAseP_logcop[i] <- a$RNAseP_avg[i]*coeff[2,2]+coeff[2,1]
+      }
+    }
+    ## Copies ##
+    for (i in 1:length(a$N1_logcop)){
+      if (is.na(a$N1_logcop[i])){
+        a$N1_copies[i] <- NA
+      }else{
+        a$N1_copies[i] <-10^a$N1_logcop[i]
+      }
+      if (is.na(a$N2_logcop[i])){
+        a$N2_copies[i] <- NA
+      }else{
+        a$N2_copies[i] <-10^a$N2_logcop[i]
+      }
+      if (is.na(a$RNAseP_logcop[i])){
+        a$RNAseP_copies[i] <- NA
+      }else{
+        a$RNAseP_copies[i] <-10^a$RNAseP_logcop[i]
+      }
+    }
     return(a)
   })
   
@@ -768,15 +823,15 @@ server <- function(input, output) {
     defdt <- datatable(a, rownames = F)
     dt <- defdt %>%
       formatStyle(
-        columns = c(5,8,11),
+        columns = c(5,8,11,14,17),
         backgroundColor = "yellow"
       )%>%
       formatStyle(
-        columns = c(6,9,12),
+        columns = c(6,9,12,15,18),
         backgroundColor = "orange"
       ) %>%
       formatStyle(
-        columns = c(7,10,13),
+        columns = c(7,10,13,16,19),
         backgroundColor = "lightblue"
       )
     
@@ -788,7 +843,7 @@ server <- function(input, output) {
     stCurveDT()
   )
   
-  ################### Standard Curve Plots ###########################
+  ################### Standard Curve Plots ##########################
   stdCoeffs <- function(){
     a <- stCurve()
     n1 <- a$N1_avg[3:5]
@@ -811,7 +866,6 @@ server <- function(input, output) {
     
     coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
     rownames(coeff) <- c("N1", "N2")
-    
     return(coeff)
   }
   
@@ -824,10 +878,12 @@ server <- function(input, output) {
     p <- as.data.frame(cbind(as.numeric(n11),as.numeric(n22),as.numeric(cpp)))
     colnames(p) <- c("n1", "n2", "cp")
     
+    form1 <- p$cp ~ p$n1
+    
     p1 <- ggplot(p, aes(x=n1, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = cp ~ n1,
+      stat_poly_eq(formula = form1,
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                    parse = TRUE) +
@@ -836,10 +892,12 @@ server <- function(input, output) {
       xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
       ylab("log(Copies)")
     
+    form2 <- p$cp ~ p$n2
+    
     p2 <- ggplot(p, aes(x=n2, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = cp ~ n2, 
+      stat_poly_eq(formula = form2, 
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
                    parse = TRUE) +
@@ -868,6 +926,11 @@ server <- function(input, output) {
     IDWELLtab()
   )
   
+  output$downIDWELL <- downloadHandler(
+    filename = "ID_well.csv",
+    content = function(fname){
+      write.csv(IDWELLtab(), fname, quote = F, row.names = F)}
+  )
   
   ############ Plate Setup MultiChanel #################### 
   setupMultiC <- reactive({
@@ -953,8 +1016,7 @@ server <- function(input, output) {
       if (is.na(cq_n1[i,])){
         lgcop_n1 <- append(lgcop_n1, NA)
       }else{
-        t <- i*coeffs[1,2]+coeffs[1,1]
-        print(t)
+        t <- cq_n1[i,1]*coeffs[1,2]+coeffs[1,1]
         lgcop_n1 <- append(lgcop_n1, t)
       }
     }
@@ -963,18 +1025,17 @@ server <- function(input, output) {
     
     lgcop_n2 <- vector()
     for (i in 1:nrow(cq_n2)){
-      print(i)
       if (is.na(cq_n2[i,])){
         lgcop_n2 <- append(lgcop_n2, NA)
       }else{
-        t <- i*coeffs[1,2]+coeffs[1,1]
+        t <- cq_n2[i,1]*coeffs[1,2]+coeffs[1,1]
         lgcop_n2 <- append(lgcop_n2, t)
       }
     }
     lgcop_n2 <- as.data.frame(lgcop_n2)
     colnames(lgcop_n2)<- "LogCopies(N2)"
     
-    #### Copies column
+    #### Copies column N1
     cop_n1 <- vector()
     for (d in 1:nrow(lgcop_n1)){
       if (is.na(lgcop_n1[d,])){
@@ -987,7 +1048,7 @@ server <- function(input, output) {
     cop_n1 <- as.data.frame(cop_n1)
     colnames(cop_n1)<- "Copies(N1)"
     
-    #### Copies column
+    #### Copies column N2
     cop_n2 <- vector()
     for (d in 1:nrow(lgcop_n2)){
       if (is.na(lgcop_n2[d,])){
@@ -1000,7 +1061,118 @@ server <- function(input, output) {
     cop_n2 <- as.data.frame(cop_n2)
     colnames(cop_n2)<- "Copies(N2)"
     
-    final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2))
+    ### Hidden columns
+    c1 <- vector()
+    c2 <- vector()
+    c3 <- vector()
+    c4 <- vector()
+    c5 <- vector()
+    c6 <- vector()
+    c7 <- vector()
+    c8 <- vector()
+    c9 <- vector()
+    for (i in 1:length(cq_rnasep[,1])){
+      ## c1 col ##
+      if(is.na(cq_rnasep[i,1]) == TRUE){
+        c1 <- append(c1,"OJO")
+      }else if (cq_rnasep[i,1] > 35){
+        c1 <- append(c1,"OJO")
+      }else{
+        c1 <- append(c1,"OK")
+      }
+      ## c2 col ##
+      if(is.na(cop_n1[i,1]) == TRUE){
+        c2 <- append(c2, "neg")
+      } else if (cop_n1[i,1] > 4){
+        c2 <- append(c2, "pos")
+      }else{
+        c2 <- append(c2, "neg")
+      }
+      ## c3 col ##
+      if(is.na(cop_n2[i,1]) == TRUE){
+        c3 <- append(c3, "neg")
+      }else if (cop_n1[i,1] > 4){
+        c3 <- append(c3, "pos")
+      }else{
+        c3 <- append(c3, "neg")
+      }
+      ## c4 col ##
+      if(is.na(cq_n1[i,1]) == TRUE){
+        c4 <- append(c4, "neg")
+      }else if(cq_n1[i,1] < 40){
+        c4 <- append(c4, "pos")
+      }else{
+        c4 <- append(c4, "neg")
+      }
+      ## c5 col ##
+      if(is.na(cq_n2[i,1]) == TRUE){
+        c5 <- append(c5, "neg")
+      }else if(cq_n2[i,1] < 40){
+        c5 <- append(c5, "pos")
+      }else{
+        c5 <- append(c5, "neg")
+      }
+      ## c6 col ##
+      if (c2[i] == c4[i]){
+        c6 <- append(c6, c2[i])
+      }else if (c2[i,1] == "neg"){
+        c6 <- append(c6, "dud")
+      }else{
+        c6 <- append(c6, "pos")
+      }
+      ## c7 col ##
+      if (c3[i] == c5[i]){
+        c7 <- append(c7, c2[i])
+      }else if (c3[i] == "neg"){
+        c7 <- append(c7, "dud")
+      }else{
+        c7 <- append(c7, "pos")
+      }
+      ## c8 col ##
+      if (c6[i] == c7[i]){
+        c8 <- append(c8, c6[i])
+      }else if (c6[i] == "pos"){
+        c8 <- append(c8, "pos")
+      }else if (c7[i] == "pos"){
+        c8 <- append(c8, "pos")
+      }else{
+        c8 <- append(c8, "dud")
+      }
+      ## c9 col ##
+      if(c1[i] == "OJO"){
+        c9 <- append(c9, "CI")
+      }else{
+        c9 <- append(c9, c8[i])
+      }
+      ##
+    }
+    c1 <- as.data.frame(c1)
+    c2 <- as.data.frame(c2)
+    c3 <- as.data.frame(c3)
+    c4 <- as.data.frame(c4)
+    c5 <- as.data.frame(c5)
+    c6 <- as.data.frame(c6)
+    c7 <- as.data.frame(c7)
+    c8 <- as.data.frame(c8)
+    c9 <- as.data.frame(c9)
+    
+    indv <- vector()
+    for (i in 1:length(a$SReplicate)){
+      if (is.na(a$Replicate[i]) == TRUE){
+        indv <- append(indv, "-")
+      }else if (c9[i,1] == "CI"){
+        indv <- append(indv, "Calidad Insuficiente")
+      }else if (c9[i,1] == "pos"){
+        indv <- append(indv, "Positive")
+      }else if (c9[i,1] == "neg"){
+        indv <- append(indv, "Negative")
+      }else if (c9[i,1] == "dud"){
+        indv <- append(indv, "Dudosa")
+      }
+    }
+    indv <- as.data.frame(indv)
+    
+    final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9, indv))
     return(final)
   })
   
@@ -1145,10 +1317,10 @@ server <- function(input, output) {
   ## Read Applied Results sheet ##
   readAppliedResults <- reactive({
     res <- input$appl
-    samples <- read_xlsx(res$datapath, sheet = "Results")
+    samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
     df <- data.frame(samples)
-    df <- df[-c(1:44),c(1,2,4,7,9)]
-    colnames(df) <- c("Well", "Well_Position","Sample", "Fluor","Cq")
+    df <- df[-c(1:44),c(1,2,4,5,7,9)]
+    colnames(df) <- c("Well", "Well_Position","Sample", "Target","Fluor","Cq")
     return(df)
   })
   
@@ -1191,7 +1363,7 @@ server <- function(input, output) {
     return(f)
   })
   
-  output$cqplateapp<- DT::renderDataTable(
+  output$cqplateapp<- renderDataTable(
     printCqPlateApp()
   )
   
@@ -1292,15 +1464,76 @@ server <- function(input, output) {
     a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
     
     cq <- cqPlateApp()
-    a$N1_dup1 <- c(cq[9,8],'-',cq[15,8],cq[13,8], cq[11,8])
-    a$N2_dup2 <- c(cq[9,16],'-',cq[15,16],cq[13,16], cq[11,16])
-    a$RNAseP_dup1 <- c(cq[9,24],cq[15,24],'-','-','-')
-    a$N1_dup2 <- c(cq[10,8],'-',cq[16,8],cq[14,8], cq[12,8])
-    a$N2_dup2 <- c(cq[10,16],'-',cq[16,16],cq[14,16], cq[12,16])
-    a$RNAseP_dup2 <- c(cq[10,24],cq[16,24],'-','-','-')
-    a$N1_avg <- c(mean(c(cq[9,8],cq[10,8])), "-", mean(c(cq[15,8], cq[16,8])), mean(c(cq[13,8], cq[14,8])), mean(c(cq[11,8], cq[12,8])))
-    a$N2_avg <- c(mean(c(cq[9,16],cq[10,16])), "-", mean(c(cq[15,16], cq[16,16])), mean(c(cq[13,16], cq[14,16])), mean(c(cq[11,16], cq[12,16])))
-    a$RNAseP_avg <- c(mean(c(cq[9,24],cq[10,24])), "-", mean(c(cq[15,24], cq[16,24])), mean(c(cq[13,24], cq[14,24])), mean(c(cq[11,24], cq[12,24])))
+    
+    a$N1_dup1 <- as.numeric(c(cq[9,8],NA,cq[15,8],cq[13,8], cq[11,8]))
+    a$N2_dup1 <- as.numeric(c(cq[9,16],NA,cq[15,16],cq[13,16], cq[11,16]))
+    a$RNAseP_dup1 <- as.numeric(c(cq[9,24],cq[15,24],NA,NA,NA))
+    a$N1_dup2 <- as.numeric(c(cq[10,8],NA,cq[16,8],cq[14,8], cq[12,8]))
+    a$N2_dup2 <- as.numeric(c(cq[10,16],NA,cq[16,16],cq[14,16], cq[12,16]))
+    a$RNAseP_dup2 <- as.numeric(c(cq[10,24],cq[16,24],NA,NA,NA))
+    a$N1_avg <- c(NA,NA,mean(c(a$N1_dup1[3], a$N1_dup2[3]), na.rm = T), mean(c(a$N1_dup1[4], a$N1_dup2[4]), na.rm = T), mean(c(a$N1_dup1[5], a$N1_dup2[5]), na.rm = T))
+    a$N2_avg <- c(NA,NA,mean(c(a$N2_dup1[3], a$N2_dup2[3]), na.rm = T), mean(c(a$N2_dup1[4], a$N2_dup2[4]), na.rm = T), mean(c(a$N2_dup1[5], a$N2_dup2[5]), na.rm = T))
+    a$RNAseP_avg <- c(NA,mean(c(a$RNAseP_dup1[2], a$RNAseP_dup2[2]), na.rm = T),mean(c(a$RNAseP_dup1[3], a$RNAseP_dup2[3]), na.rm = T), mean(c(a$RNAseP_dup1[4], a$RNAseP_dup2[4]), na.rm = T), mean(c(a$RNAseP_dup1[5], a$RNAseP_dup2[5]), na.rm =T))
+    
+    ################### Coefficients ####################
+    n1 <- a$N1_avg[3:5]
+    n2 <- a$N2_avg[3:5]
+    cp <- a$`log(copies)`[3:5]
+    p <- as.data.frame(cbind(as.numeric(n1),as.numeric(n2) , as.numeric(cp)))
+    colnames(p) <- c("n1", "n2", "cp")
+    
+    model_n1 <- lm(cp ~ n1, p)
+    n1_coeff1 <- as.numeric(model_n1$coefficients[1])
+    n1_coeff2 <- as.numeric(model_n1$coefficients[2])
+    n1_coeff <- as.data.frame(cbind(n1_coeff1, n1_coeff2))
+    colnames(n1_coeff) <- c("Intercept", "Slope")
+    
+    model_n2 <- lm(cp ~ n2, p)
+    n2_coeff1 <- as.numeric(model_n2$coefficients[1])
+    n2_coeff2 <- as.numeric(model_n2$coefficients[2])
+    n2_coeff <- as.data.frame(cbind(n2_coeff1, n2_coeff2))
+    colnames(n2_coeff) <- c("Intercept", "Slope")
+    
+    coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
+    rownames(coeff) <- c("N1", "N2")
+    ###############################################################
+    ## log(Copies) ##
+    for (i in 1:length(a$N1_avg)){
+      if(is.na(a$N1_avg[i])== TRUE){
+        a$N1_logcop[i] <- NA
+      }else{
+        a$N1_logcop[i] <- a$N1_avg[i]*coeff[1,2]+coeff[1,1]
+      }
+      if(is.na(a$N2_avg[i])== TRUE){
+        a$N2_logcop[i] <- NA
+      }else{
+        a$N2_logcop[i] <- a$N2_avg[i]*coeff[2,2]+coeff[2,1]
+      }
+      if(is.na(a$RNAseP_avg[i])== TRUE){
+        a$RNAseP_logcop[i] <- NA
+      }else{
+        a$RNAseP_logcop[i] <- a$RNAseP_avg[i]*coeff[2,2]+coeff[2,1]
+      }
+    }
+    ## Copies ##
+    for (i in 1:length(a$N1_logcop)){
+      if (is.na(a$N1_logcop[i])){
+        a$N1_copies[i] <- NA
+      }else{
+        a$N1_copies[i] <-10^a$N1_logcop[i]
+      }
+      if (is.na(a$N2_logcop[i])){
+        a$N2_copies[i] <- NA
+      }else{
+        a$N2_copies[i] <-10^a$N2_logcop[i]
+      }
+      if (is.na(a$RNAseP_logcop[i])){
+        a$RNAseP_copies[i] <- NA
+      }else{
+        a$RNAseP_copies[i] <-10^a$RNAseP_logcop[i]
+      }
+    }
+    
     return(a)
   })
   
@@ -1311,15 +1544,15 @@ server <- function(input, output) {
     defdt <- datatable(a, rownames = F)
     dt <- defdt %>%
       formatStyle(
-        columns = c(5,8,11),
+        columns = c(5,8,11,14,17),
         backgroundColor = "yellow"
       )%>%
       formatStyle(
-        columns = c(6,9,12),
+        columns = c(6,9,12,15,18),
         backgroundColor = "orange"
       ) %>%
       formatStyle(
-        columns = c(7,10,13),
+        columns = c(7,10,13,16,19),
         backgroundColor = "lightblue"
       )
     
@@ -1331,7 +1564,7 @@ server <- function(input, output) {
     stCurveAppDT()
   )
   
-  ################### Standard Curve Plots ###########################
+  ################### Standard Curve Plots for Applied ###########################
   stdCoeffsApp <- function(){
     a <- stCurveApp()
     n1 <- a$N1_avg[3:5]
@@ -1360,17 +1593,18 @@ server <- function(input, output) {
   
   stdPlotsApp <- reactive({
     a <- stCurveApp()
-    
     n11 <- a$N1_avg[3:5]
     n22 <- a$N2_avg[3:5]
     cpp <- a$`log(copies)`[3:5]
     p <- as.data.frame(cbind(as.numeric(n11),as.numeric(n22),as.numeric(cpp)))
     colnames(p) <- c("n1", "n2", "cp")
     
+    form1 <- p$cp ~ p$n1
+    
     p1 <- ggplot(p, aes(x=n1, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = cp ~ n1,
+      stat_poly_eq(formula = form1,
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                    parse = TRUE) +
@@ -1379,10 +1613,12 @@ server <- function(input, output) {
       xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
       ylab("log(Copies)")
     
+    form2 <- p$cp ~ p$n2
+    
     p2 <- ggplot(p, aes(x=n2, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = cp ~ n2, 
+      stat_poly_eq(formula = form2, 
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
                    parse = TRUE) +
@@ -1403,7 +1639,7 @@ server <- function(input, output) {
   ############## ID Well for Applied ###############
   IDWELLtabApp <- reactive({
     inp <- readAppliedResults()
-    wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
+    wellid <- cbind(inp$Well, as.character(inp$Target), inp$Sample)
     colnames(wellid) <- c("Well", "Target", "Sample")
     return(wellid)
   })
@@ -1412,6 +1648,10 @@ server <- function(input, output) {
     IDWELLtabApp()
   )
   
+  output$downidwellapp <- downloadHandler(
+    filename = "ID_well.csv",
+    content = function(fname){
+      write.csv(IDWELLtabApp(), fname, quote = F, row.names = F)}
+  )
   
 }
-  

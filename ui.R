@@ -16,7 +16,7 @@ ui <- fluidPage(
         fileInput("appl",
                     label = "Upload Applied Quant Studio xlsx")
         ),
-       checkboxInput("taqman", "2) Analysis: Taqman"),
+       checkboxInput("taqman", "2) Analysis: Taqman Cq Curves"),
        conditionalPanel(
         condition = "input.taqman == true",
         fileInput("taqmancsv",
@@ -64,7 +64,9 @@ ui <- fluidPage(
                      plotOutput("std"))
           ),
           tabPanel("Analysis Samples", dataTableOutput("analysis")),
-          tabPanel("ID_Well", tableOutput("IDWELL"))
+          tabPanel("ID_Well", 
+                   downloadButton("downIDWELL", "Download CSV"),
+                   tableOutput("IDWELL"))
         )
       ),
       ########### Taqman Amplification Curves ###############
@@ -121,7 +123,7 @@ ui <- fluidPage(
           tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
           tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
           tabPanel("Std Curves", dataTableOutput("stdcurveapp"), plotOutput("stdapp")),
-          tabPanel("ID Well", tableOutput("IDWELLApp"))
+          tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp"))
         )
       ),
       ###### Main panel appears only of SYBR is checked ########
@@ -153,7 +155,7 @@ ui <- fluidPage(
                       )
                   )), 
           tabPanel("TM Table",
-                   downloadButton("downloadtable", "Download"),
+                   downloadButton("downloadtable", "Download CSV"),
                    actionButton("send2drive", "Send to Google Drive", icon = icon("google-drive", lib="font-awesome")),
                    tableOutput("tmtable")
           )

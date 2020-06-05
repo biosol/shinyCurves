@@ -25,6 +25,5 @@ app <- shinyApp(ui = ui, server = server)
 #Run app
 runApp()
 
-
 # Example of shiny app paper  
 #https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0229330
