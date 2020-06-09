@@ -740,7 +740,7 @@ server <- function(input, output) {
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
     a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
-    a$Dilution <- c("-","-",100,1000,100000)
+    a$Dilution <- c("-","-",100,10000,100000)
     a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]))
     a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
     
