@@ -975,7 +975,7 @@ server <- function(input, output) {
       p <- rep(paste(LETTERS[1:16], n, sep=""))
       wells_n1 <- append(wells_n1, p)
     }
-    wells_n1_def <- as.data.frame(head(wells_n1, 120))
+    wells_n1_def <- as.data.frame(head(wells_n1, length(a[,1])))
     colnames(wells_n1_def) <- "Wells_N1"
     
     wells_n2 <- vector()
@@ -983,29 +983,29 @@ server <- function(input, output) {
       p <- rep(paste(LETTERS[1:16], n, sep=""))
       wells_n2 <- append(wells_n2, p)
     }
-    wells_n2_def <- as.data.frame(head(wells_n2, 120))
+    wells_n2_def <- as.data.frame(head(wells_n2, length(a[,1])))
     colnames(wells_n2_def) <- "Wells_N2"
     
     wells_rnasep <- vector()
-    for (n in 9:16){
+    for (n in 17:24){
       p <- rep(paste(LETTERS[1:16], n, sep=""))
       wells_rnasep <- append(wells_rnasep, p)
     }
-    wells_rnasep_def <- as.data.frame(head(wells_n2, 120))
+    wells_rnasep_def <- as.data.frame(head(wells_rnasep, length(a[,1])))
     colnames(wells_rnasep_def) <- "Wells_RNAseP"
     
     ###### Ct columns 
     cq <- cqPlate()
     cq_n1 <- stack(cq[,1:8])
-    cq_n1 <- as.data.frame(head(cq_n1[,1], 120))
+    cq_n1 <- as.data.frame(head(cq_n1[,1], length(a[,1])))
     colnames(cq_n1) <- "Cq_N1"
     
     cq_n2 <- stack(cq[,9:16])
-    cq_n2 <- as.data.frame(head(cq_n2[,1], 120))
+    cq_n2 <- as.data.frame(head(cq_n2[,1], length(a[,1])))
     colnames(cq_n2) <- "Cq_N2"
     
     cq_rnasep <- stack(cq[,17:24])
-    cq_rnasep <- as.data.frame(head(cq_rnasep[,1], 120))
+    cq_rnasep <- as.data.frame(head(cq_rnasep[,1], length(a[,1])))
     colnames(cq_rnasep) <- "Cq_RNAseP"
     
     #### log(copies) Column
@@ -1016,7 +1016,7 @@ server <- function(input, output) {
       if (is.na(cq_n1[i,])){
         lgcop_n1 <- append(lgcop_n1, NA)
       }else{
-        t <- cq_n1[i,1]*coeffs[1,2]+coeffs[1,1]
+        t <- as.numeric(as.character(cq_n1[i,1]))*coeffs[1,2]+coeffs[1,1]
         lgcop_n1 <- append(lgcop_n1, t)
       }
     }
@@ -1028,7 +1028,7 @@ server <- function(input, output) {
       if (is.na(cq_n2[i,])){
         lgcop_n2 <- append(lgcop_n2, NA)
       }else{
-        t <- cq_n2[i,1]*coeffs[1,2]+coeffs[1,1]
+        t <- as.numeric(as.character(cq_n2[i,1]))*coeffs[1,2]+coeffs[1,1]
         lgcop_n2 <- append(lgcop_n2, t)
       }
     }
@@ -1073,7 +1073,7 @@ server <- function(input, output) {
     c9 <- vector()
     for (i in 1:length(cq_rnasep[,1])){
       ## c1 col ##
-      if(is.na(cq_rnasep[i,1]) == TRUE){
+      if(is.na(as.numeric(as.character(cq_rnasep[i,1]))) == TRUE){
         c1 <- append(c1,"OJO")
       }else if (cq_rnasep[i,1] > 35){
         c1 <- append(c1,"OJO")
@@ -1091,7 +1091,7 @@ server <- function(input, output) {
       ## c3 col ##
       if(is.na(cop_n2[i,1]) == TRUE){
         c3 <- append(c3, "neg")
-      }else if (cop_n1[i,1] > 4){
+      }else if (cop_n2[i,1] > 4){
         c3 <- append(c3, "pos")
       }else{
         c3 <- append(c3, "neg")
@@ -1155,22 +1155,25 @@ server <- function(input, output) {
     c7 <- as.data.frame(c7)
     c8 <- as.data.frame(c8)
     c9 <- as.data.frame(c9)
+  
+    c9[] <- lapply(c9, as.character)
     
     indv <- vector()
-    for (i in 1:length(a$SReplicate)){
-      if (is.na(a$Replicate[i]) == TRUE){
-        indv <- append(indv, "-")
-      }else if (c9[i,1] == "CI"){
+    for (i in c9[,1]){
+      if (i == "CI"){
         indv <- append(indv, "Calidad Insuficiente")
-      }else if (c9[i,1] == "pos"){
+      } else if (i == "pos"){
         indv <- append(indv, "Positive")
-      }else if (c9[i,1] == "neg"){
+      } else if (i == "neg"){
         indv <- append(indv, "Negative")
-      }else if (c9[i,1] == "dud"){
+      } else if (i == "dud"){
         indv <- append(indv, "Dudosa")
+      } else if (is.na(i) == TRUE){
+        indv <- append(indv, "-")
       }
     }
     indv <- as.data.frame(indv)
+    indv[] <- lapply(indv, as.character)
     
     final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9, indv))
     return(final)
@@ -1201,7 +1204,6 @@ server <- function(input, output) {
         columns = 12:13,
         backgroundColor = "lemonchiffon"
       )
-    
     return(f)
     
   })
@@ -1209,6 +1211,81 @@ server <- function(input, output) {
   output$analysis <- renderDataTable({
     AnalysisSamplesDT()
   })
+  
+  ########### Interpretation tab #################
+  interpretation <- reactive({
+    an <- AnalysisSamples()
+    c10 <- vector()
+    s1 <- seq(from=1, to=120, by=2)
+    s2 <- seq(from=2, to=120, by=2)
+    for (i in 1:length(s1)){
+      if(an$indv[s1[i]] == an$indv[s2[i]]){
+        c10 <- append(c10, an$indv[s1[i]])
+      }else{
+        c10 <- append(c10, "Repeat")
+      }
+    }
+    c10 <- as.data.frame(c10)
+    c10[] <- lapply(c10, as.character)
+    ## Interpretation ##
+    interp <- vector()
+    for (i in c10[,1]){
+      if (i == "Calidad Insuficiente"){
+        interp = append(interp, "Repeat")
+      } else if (i == "Dudosa"){
+        interp = append(interp, "Repeat")
+      } else {
+        interp = append(interp, i)
+      }
+    }
+    
+    interp <- as.data.frame(interp)
+    interp[] <- lapply(interp, as.character)
+    final <- cbind(c10, interp)
+    colnames(final) <- c("", "Interpretation")
+    return(final)
+  })
+  
+  
+  interpretationDT <- reactive({
+    df <- interpretation()
+    defdt <- datatable(df, rownames = F, options = list(pageLength = 60))
+    
+    f <- defdt %>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = styleEqual(c("Positive", "Negative", "Repeat", "Calidad Insuficiente"), 
+                                     c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
+      )
+    return(f)
+  })
+  
+  output$interpret <- renderDataTable(
+    interpretationDT()
+  )
+  
+  ############ ID_Result ###################
+  idresult <- reactive({
+    an <- AnalysisSamples()
+    int <- interpretation()
+    realid <- unique(as.numeric(as.character(an$Real_ID)))
+    final <- as.data.frame(cbind(realid, int$Interpretation))
+    colnames(final)<- c("ID", "Interpretation")
+    return(final)
+    
+  })
+  
+  output$downidres <- downloadHandler(
+    filename = "ID_result.csv",
+    content = function(fname){
+      write.csv(idresult(), fname, quote = F, row.names = F)}
+  )  
+  
+  
+  output$IDRESULT <- renderTable(
+    idresult()
+  )
+  
   
   ###########################################################################
   ######################### APPLIED QUANT STUDIO ############################
@@ -1409,9 +1486,9 @@ server <- function(input, output) {
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
     second <- data.frame(d = unlist(s[9:16], use.names = FALSE))
     third <- data.frame(d = unlist(s[17:24], use.names = FALSE))
+    third[ third == "HeLa"] <- NA
     all <- cbind(first, second, third)
     colnames(all) <- c("first", "second", "third")
-    #def <- head(all, 120)
     def <- all[complete.cases(all),]
     
     ## Add "coinciden" to script 
@@ -1444,7 +1521,7 @@ server <- function(input, output) {
       ) %>%
       formatStyle(
         columns = 4,
-        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'red'))
+        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'tomato'))
       )
     return(f)
   })
@@ -1636,6 +1713,347 @@ server <- function(input, output) {
     stdPlotsApp()
   )
   
+  ############ Plate Setup MultiChanel for Applied #################### 
+  setupMultiCApp <- reactive({
+    def <- checkSamplesApp()
+    
+    realid <- as.numeric(as.character(def$first))
+    sample <- rep(paste("S",1:(length(realid)/2), sep = ""),each=2)
+    replic <- rep(paste(sample, "-", 1:2, sep=""))
+    
+    multic <- as.data.frame(cbind(sample,replic, realid))
+    colnames(multic)<- c("Sample", "Replicate","Real_ID")
+    return(multic)
+  })
+  
+  setupMultiCAppDT <- reactive({
+    a <- setupMultiCApp()
+    defdt <- datatable(a, rownames = F, 
+                       options = list(pageLength = 50))
+    f <- defdt %>%
+      formatStyle(
+        columns = c(1,3),
+        backgroundColor = "seagreen"
+      )%>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = "lightgreen"
+      )
+    return(f)
+  })
+  
+  output$setupmulticapp <- renderDataTable(
+    setupMultiCAppDT()
+  )
+  
+  ###
+  
+  ############# Hidrolysis Probe Plate ###############
+  AnalysisSamplesApp <- reactive({
+    
+    ## Real Id, Sample, Replicate columns
+    a <- setupMultiCApp()
+    
+    ## Well columns
+    wells_n1 <- vector()
+    for (n in 1:8){
+      p <- rep(paste(LETTERS[1:16], n, sep=""))
+      wells_n1 <- append(wells_n1, p)
+    }
+    wells_n1_def <- as.data.frame(head(wells_n1, length(a[,1])))
+    colnames(wells_n1_def) <- "Wells_N1"
+    
+    wells_n2 <- vector()
+    for (n in 9:16){
+      p <- rep(paste(LETTERS[1:16], n, sep=""))
+      wells_n2 <- append(wells_n2, p)
+    }
+    wells_n2_def <- as.data.frame(head(wells_n2, length(a[,1])))
+    colnames(wells_n2_def) <- "Wells_N2"
+    
+    wells_rnasep <- vector()
+    for (n in 17:24){
+      p <- rep(paste(LETTERS[1:16], n, sep=""))
+      wells_rnasep <- append(wells_rnasep, p)
+    }
+    wells_rnasep_def <- as.data.frame(head(wells_rnasep, length(a[,1])))
+    colnames(wells_rnasep_def) <- "Wells_RNAseP"
+    
+    ###### Ct columns 
+    cq <- cqPlateApp()
+    cq_n1 <- stack(cq[,1:8])
+    cq_n1 <- as.data.frame(head(cq_n1[,1], length(a[,1])))
+    colnames(cq_n1) <- "Cq_N1"
+    
+    cq_n2 <- stack(cq[,9:16])
+    cq_n2 <- as.data.frame(head(cq_n2[,1], length(a[,1])))
+    colnames(cq_n2) <- "Cq_N2"
+    
+    cq_rnasep <- stack(cq[,17:24])
+    cq_rnasep <- as.data.frame(head(cq_rnasep[,1], length(a[,1])))
+    colnames(cq_rnasep) <- "Cq_RNAseP"
+    
+    #### log(copies) Column
+    coeffs <- stdCoeffsApp()
+    
+    lgcop_n1 <- vector()
+    for (i in 1:nrow(cq_n1)){
+      if (is.na(cq_n1[i,1])== TRUE){
+        lgcop_n1 <- append(lgcop_n1, NA)
+      }else{
+        t <- as.numeric(as.character(cq_n1[i,1]))*coeffs[1,2]+as.numeric(coeffs[1,1])
+        lgcop_n1 <- append(lgcop_n1, t)
+      }
+    }
+    lgcop_n1 <- as.data.frame(lgcop_n1)
+    colnames(lgcop_n1)<- "LogCopies(N1)"
+    
+    lgcop_n2 <- vector()
+    for (i in 1:nrow(cq_n2)){
+      if (is.na(cq_n2[i,1])== TRUE){
+        lgcop_n2 <- append(lgcop_n2, NA)
+      }else{
+        t <- as.numeric(as.character(cq_n2[i,1]))*coeffs[1,2]+coeffs[1,1]
+        lgcop_n2 <- append(lgcop_n2, t)
+      }
+    }
+    lgcop_n2 <- as.data.frame(lgcop_n2)
+    colnames(lgcop_n2)<- "LogCopies(N2)"
+    
+    #### Copies column N1
+    cop_n1 <- vector()
+    for (d in 1:nrow(lgcop_n1)){
+      if (is.na(lgcop_n1[d,])){
+        cop_n1 <- append(cop_n1, NA)
+      }else{
+        v <- 10^lgcop_n1[d,]
+        cop_n1 <- append(cop_n1, v)
+      }
+    }
+    cop_n1 <- as.data.frame(cop_n1)
+    colnames(cop_n1)<- "Copies(N1)"
+    
+    #### Copies column N2
+    cop_n2 <- vector()
+    for (d in 1:nrow(lgcop_n2)){
+      if (is.na(lgcop_n2[d,])){
+        cop_n2 <- append(cop_n2, NA)
+      }else{
+        v <- 10^lgcop_n2[d,]
+        cop_n2 <- append(cop_n2, v)
+      }
+    }
+    cop_n2 <- as.data.frame(cop_n2)
+    colnames(cop_n2)<- "Copies(N2)"
+    
+    ### Hidden columns
+    c1 <- vector()
+    c2 <- vector()
+    c3 <- vector()
+    c4 <- vector()
+    c5 <- vector()
+    c6 <- vector()
+    c7 <- vector()
+    c8 <- vector()
+    c9 <- vector()
+    
+    for (i in 1:length(cq_rnasep[,1])){
+      ## c1 col ##
+      if(is.na(as.numeric(as.character(cq_rnasep[i,1]))) == TRUE){
+        c1 <- append(c1,"OJO")
+      }else if (as.numeric(as.character(cq_rnasep[i,1])) > 35){
+        c1 <- append(c1,"OJO")
+      }else{
+        c1 <- append(c1,"OK")
+      }
+      
+      ## c2 col ##
+      if(is.na(cop_n1[i,1]) == TRUE){
+        c2 <- append(c2, "neg")
+      } else if (as.numeric(cop_n1[i,1]) > 4){
+        c2 <- append(c2, "pos")
+      }else{
+        c2 <- append(c2, "neg")
+      }
+      ## c3 col ##
+      if(is.na(cop_n2[i,1]) == TRUE){
+        c3 <- append(c3, "neg")
+      }else if (as.numeric(cop_n2[i,1]) > 4){
+        c3 <- append(c3, "pos")
+      }else{
+        c3 <- append(c3, "neg")
+      }
+      ## c4 col ##
+      if(is.na(cq_n1[i,1]) == TRUE){
+        c4 <- append(c4, "neg")
+      }else if(as.numeric(cq_n1[i,1]) < 40){
+        c4 <- append(c4, "pos")
+      }else{
+        c4 <- append(c4, "neg")
+      }
+      ## c5 col ##
+      if(is.na(cq_n2[i,1]) == TRUE){
+        c5 <- append(c5, "neg")
+      }else if(as.numeric(cq_n2[i,1]) < 40){
+        c5 <- append(c5, "pos")
+      }else{
+        c5 <- append(c5, "neg")
+      }
+      ## c6 col ##
+      if (c2[i] == c4[i]){
+        c6 <- append(c6, c2[i])
+      }else if (c2[i,1] == "neg"){
+        c6 <- append(c6, "dud")
+      }else{
+        c6 <- append(c6, "pos")
+      }
+      ## c7 col ##
+      if (c3[i] == c5[i]){
+        c7 <- append(c7, c2[i])
+      }else if (c3[i] == "neg"){
+        c7 <- append(c7, "dud")
+      }else{
+        c7 <- append(c7, "pos")
+      }
+      ## c8 col ##
+      if (c6[i] == c7[i]){
+        c8 <- append(c8, c6[i])
+      }else if (c6[i] == "pos"){
+        c8 <- append(c8, "pos")
+      }else if (c7[i] == "pos"){
+        c8 <- append(c8, "pos")
+      }else{
+        c8 <- append(c8, "dud")
+      }
+      ## c9 col ##
+      if(c1[i] == "OJO"){
+        c9 <- append(c9, "CI")
+      }else{
+        c9 <- append(c9, c8[i])
+      }
+      ##
+    }
+    c1 <- as.data.frame(c1)
+    c2 <- as.data.frame(c2)
+    c3 <- as.data.frame(c3)
+    c4 <- as.data.frame(c4)
+    c5 <- as.data.frame(c5)
+    c6 <- as.data.frame(c6)
+    c7 <- as.data.frame(c7)
+    c8 <- as.data.frame(c8)
+    c9 <- as.data.frame(c9)
+    
+    c9[] <- lapply(c9, as.character)
+    indv <- vector()
+    
+    for (i in c9[,1]){
+      if (i == "CI"){
+        indv <- append(indv, "Calidad Insuficiente")
+      } else if (i == "pos"){
+        indv <- append(indv, "Positive")
+      } else if (i == "neg"){
+        indv <- append(indv, "Negative")
+      } else if (i == "dud"){
+        indv <- append(indv, "Dudosa")
+      } else if (is.na(i) == TRUE){
+        indv <- append(indv, "-")
+      }
+    }
+    indv <- as.data.frame(indv)
+    indv[] <- lapply(indv, as.character)
+    
+    final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9,indv))
+    return(final)
+  })
+  
+  
+  AnalysisSamplesAppDT <- reactive({
+    df <- AnalysisSamplesApp()
+    defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
+    
+    f <- defdt %>%
+      formatStyle(
+        columns = 1:3,
+        backgroundColor = "lemonchiffon"
+      ) %>%
+      formatStyle(
+        columns = 4:6,
+        backgroundColor = "khaki"
+      )%>%
+      formatStyle(
+        columns = 7:9,
+        backgroundColor = "lemonchiffon"
+      )%>%
+      formatStyle(
+        columns = 10:11,
+        backgroundColor = "khaki"
+      )%>%
+      formatStyle(
+        columns = 12:13,
+        backgroundColor = "lemonchiffon"
+      )
+    
+    return(f)
+    
+  })
+  
+  output$analysisapp <- renderDataTable({
+    AnalysisSamplesAppDT()
+  })
+  
+  ########### Interpretation tab for Applied #################
+  interpretationApp <- reactive({
+    an <- AnalysisSamplesApp()
+    c10 <- vector()
+    s1 <- seq(from=1, to=length(an[,1]), by=2)
+    s2 <- seq(from=2, to=length(an[,1]), by=2)
+    for (i in 1:length(s1)){
+      if(an$indv[s1[i]] == an$indv[s2[i]]){
+        c10 <- append(c10, an$indv[s1[i]])
+      }else{
+        c10 <- append(c10, "Repeat")
+      }
+    }
+    c10 <- as.data.frame(c10)
+    c10[] <- lapply(c10, as.character)
+    ## Interpretation ##
+    interp <- vector()
+    for (i in c10[,1]){
+      if (i == "Calidad Insuficiente"){
+        interp = append(interp, "Repeat")
+      } else if (i == "Dudosa"){
+        interp = append(interp, "Repeat")
+      } else {
+        interp = append(interp, i)
+      }
+    }
+    
+    interp <- as.data.frame(interp)
+    interp[] <- lapply(interp, as.character)
+    final <- cbind(c10, interp)
+    colnames(final) <- c("", "Interpretation")
+    return(final)
+  })
+  
+  
+  interpretationAppDT <- reactive({
+    df <- interpretationApp()
+    defdt <- datatable(df, rownames = F, options = list(pageLength = 60))
+    
+    f <- defdt %>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = styleEqual(c("Positive", "Negative", "Repeat", "Calidad Insuficiente"), 
+                                     c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
+      )
+    return(f)
+  })
+  
+  output$interpretapp <- renderDataTable(
+    interpretationAppDT()
+  )
+  
+  
   ############## ID Well for Applied ###############
   IDWELLtabApp <- reactive({
     inp <- readAppliedResults()
@@ -1653,5 +2071,27 @@ server <- function(input, output) {
     content = function(fname){
       write.csv(IDWELLtabApp(), fname, quote = F, row.names = F)}
   )
+  
+  ############ ID_Result Applied ###################
+  idresultApp <- reactive({
+    an <- AnalysisSamplesApp()
+    int <- interpretationApp()
+    realid <- unique(as.numeric(as.character(an$Real_ID)))
+    final <- as.data.frame(cbind(realid, int$Interpretation))
+    colnames(final)<- c("ID", "Interpretation")
+    return(final)
+    
+  })
+  
+  output$downidresapp <- downloadHandler(
+    filename = "ID_result.csv",
+    content = function(fname){
+      write.csv(idresultApp(), fname, quote = F, row.names = F)}
+  )  
+  
+  output$IDRESULTApp <- renderTable(
+    idresultApp()
+  )
+  
   
 }

@@ -64,9 +64,13 @@ ui <- fluidPage(
                      plotOutput("std"))
           ),
           tabPanel("Analysis Samples", dataTableOutput("analysis")),
+          tabPanel("Interpretation", dataTableOutput("interpret")),
           tabPanel("ID_Well", 
                    downloadButton("downIDWELL", "Download CSV"),
-                   tableOutput("IDWELL"))
+                   tableOutput("IDWELL")),
+          tabPanel("ID_Result",
+                   downloadButton("downidres", "Download CSV"),
+                   tableOutput("IDRESULT"))
         )
       ),
       ########### Taqman Amplification Curves ###############
@@ -122,8 +126,12 @@ ui <- fluidPage(
           tabPanel("Cq Plate", dataTableOutput("cqplateapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
           tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
+          tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticapp")),
           tabPanel("Std Curves", dataTableOutput("stdcurveapp"), plotOutput("stdapp")),
-          tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp"))
+          tabPanel("Analysis Samples", dataTableOutput("analysisapp")),
+          tabPanel("Interpretation", dataTableOutput("interpretapp")),
+          tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp")),
+          tabPanel("ID Result", downloadButton("downidresapp", "Download CSV"),tableOutput("IDRESULTApp"))
         )
       ),
       ###### Main panel appears only of SYBR is checked ########
