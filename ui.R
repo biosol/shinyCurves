@@ -28,7 +28,6 @@ ui <- fluidPage(
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
-      ###### Sidebar panel appears only of SYBR is checked ########
       checkboxInput("sybr", "3) Input + Analysis: SYBR Melting Curves"),
       conditionalPanel(
         condition = "input.sybr == true",
@@ -45,7 +44,7 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      ###### Main panel appears only of Taqman Excel is checked ########
+      ###### 1a) Main Panel for Biorad Input ########
       conditionalPanel(
         condition = "input.taqexcel == true",
         tabsetPanel(
@@ -73,44 +72,13 @@ ui <- fluidPage(
                    tableOutput("IDRESULT"))
         )
       ),
-      ########### Taqman Amplification Curves ###############
-      conditionalPanel(
-        condition = "input.taqman == true",
-        tabsetPanel(
-          id = "taq",
-          type = "tabs",
-          tabPanel("ID_Well", tableOutput("taqmanwell")),
-          tabPanel("ID_Result", tableOutput("taqmanidres")),
-          tabPanel("C", tableOutput("c")),
-          tabPanel("Info", tableOutput("info")),
-          tabPanel("General Plots",
-                   downloadButton("downgen", "Download PDF"),
-                   plotOutput("genplots", height = "1000px")
-                   ),
-          tabPanel("Indet Plots", 
-                   tabsetPanel(
-                     tabPanel("N1",
-                              fluidRow(downloadButton("downln1", "Download PDF"),
-                                       plotOutput("n1", height = "500px"))
-                     ),
-                     tabPanel("N2",
-                              fluidRow(downloadButton("downln2", "Download PDF"),
-                                       plotOutput("n2", height = "500px"))
-                     ),
-                     tabPanel("RNAseP",
-                              fluidRow(downloadButton("downrnasep", "Download PDF"),
-                                       plotOutput("rnasep", height = "500px"))
-                     )
-                   )
-          )
-        )
-      ),
+      ###### 1b) Main Panel for Applied Input ########
       conditionalPanel(
         condition = "input.app == true",
         tabsetPanel(
           id = "blabla",
           type = "tabs",
-          tabPanel("Raw Data", tableOutput("prueba")),
+          tabPanel("Raw Data", tableOutput("readapp")),
           tabPanel("Transposed", tableOutput("trans")),
           tabPanel("N1",
                    downloadButton("downtransN1", "Download CSV"),
@@ -134,7 +102,39 @@ ui <- fluidPage(
           tabPanel("ID Result", downloadButton("downidresapp", "Download CSV"),tableOutput("IDRESULTApp"))
         )
       ),
-      ###### Main panel appears only of SYBR is checked ########
+      ###### 2) Main Panel for Taqman ########
+      conditionalPanel(
+        condition = "input.taqman == true",
+        tabsetPanel(
+          id = "taq",
+          type = "tabs",
+          tabPanel("ID_Well", tableOutput("taqmanwell")),
+          tabPanel("ID_Result", tableOutput("taqmanidres")),
+          tabPanel("C", tableOutput("c")),
+          tabPanel("Info", tableOutput("info")),
+          tabPanel("General Plots",
+                   downloadButton("downgen", "Download PDF"),
+                   plotOutput("genplots", height = "1000px")
+          ),
+          tabPanel("Indet Plots", 
+                   tabsetPanel(
+                     tabPanel("N1",
+                              fluidRow(downloadButton("downln1", "Download PDF"),
+                                       plotOutput("n1", height = "500px"))
+                     ),
+                     tabPanel("N2",
+                              fluidRow(downloadButton("downln2", "Download PDF"),
+                                       plotOutput("n2", height = "500px"))
+                     ),
+                     tabPanel("RNAseP",
+                              fluidRow(downloadButton("downrnasep", "Download PDF"),
+                                       plotOutput("rnasep", height = "500px"))
+                     )
+                   )
+          )
+        )
+      ),
+      ###### 3) Main Panel for SYBR ########
       conditionalPanel(
         condition = "input.sybr == true",
         tabsetPanel(

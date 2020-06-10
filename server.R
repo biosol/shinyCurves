@@ -1,513 +1,9 @@
 server <- function(input, output) {
-  ################################## READ AMPLIFICATION INPUT #################################
-  ## 1) Read file and display table
-  # a) Read file
-  cyclesInput <- reactive({
-    dat <- input$taqmancsv
-    if (!is.null(dat)){
-      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=",", dec=".")
-      tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
-      return(tbl_list)
-    }
-  })
   
-  ## Gene list
-  geneList <- reactive({
-    dat <- input$taqmancsv
-    lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
-                                                   basename(dat$name)))
-    lst <- unlist(lst)
-    out <- unique(lst)
-    return(out)
-  })
+  ############################ BIORAD ##############################
+  ########################################################################
   
-  ################################## READ TM FILE #############################################
-  ## 2) Display table
-  
-  # a) Read TM files (multiple upload will be saved in list)
-  TMinput <- reactive({
-    dat <- input$sybrcsv
-    if (!is.null(dat)){
-      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=";", dec=",")
-      tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
-      return(tbl_list)
-    }
-  })
-  
-  ## Gene list
-  SybrGeneList <- reactive({
-    dat <- input$sybrcsv
-    lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
-                                                   basename(dat$name)))
-    lst <- unlist(lst)
-    out <- unique(lst)
-    return(out)
-  })
-  
-  ############################## READ TAQMAN ID-WELL FILE ############################################
-  ## 3) Well id
-  taqwellID <- reactive({
-    raw <- input$taqwellid
-    if (!is.null(raw)){
-      data = read.csv(raw$datapath, sep = ';', header = TRUE, dec=',');
-      data[is.na(data)]<-""
-      colnames(data)[3] <- "ID"
-      return(data)
-    }else{
-      return (NULL);
-    }  
-  })
-  ## b) Call function and display in app
-  output$taqmanwell <- renderTable({
-    newWell = taqwellID()
-    if(is.null(newWell)){
-      return();
-    }else{
-      newWell;
-    }
-  })
-  
-  ################################## READ SYBR ID-WELL FILE ###########################################
-  ## 3) Well id
-  wellID <- reactive({
-    raw <- input$wellid
-    if (!is.null(raw)){
-      data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
-      ## Correct Well names, adds new column called Well2 to data 
-      data$Well2<-sub('(^[A-Z]+)0', "\\1", data$Well, perl=TRUE) #replace f.i. A01 by A1
-      return(data)
-    }else{
-      return (NULL);
-    }  
-  })
-  ## b) Call function and display in app
-  output$well <- renderTable({
-    newWell = wellID()
-    if(is.null(newWell)){
-      return();
-    }else{
-      newWell;
-    }
-  })
-  
-  ############################# READ TAQMAN ID_RESULTS FILE ###################################
-  ## Read file
-  taqIDRes <- reactive({
-    idres <- input$taqidres
-    if (!is.null(idres)){
-      data <- read.csv(idres$datapath, sep = ';', header = TRUE, dec=',');
-      data <- data[,-3] 
-      return(data)
-    }
-  })
-  
-  ## Display table 
-  output$taqmanidres <- renderTable({
-    res <- taqIDRes()
-    if(is.null(res)){
-      return();
-    }else{
-      res;
-    }
-  })
-  
-  ############################# COMBINE ID_WELL AND ID_RESULTS FILE #################################
-  ## a) Combine ID well and ID results
-  combIDwellIDres <- reactive({
-    wellid <- taqwellID()
-    idres <- taqIDRes()
-    info <-merge(idres,wellid,by="ID")
-    info$Well2<-sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE)
-    info<-as.data.frame(info)
-    return(info)
-  })
-    
-  # b) Set constant variables from endogenous control data
-  constVarendoC <- reactive({
-    info <- combIDwellIDres()
-    C<-info[which(info$Target==input$endoC),] # select target
-    C<-C[order(C$Well2),]
-    return(C)
-  })
-  
-  output$c <- renderTable({
-    C <- constVarendoC()
-    C
-  })
-  
-  # c) Display info table
-  output$info <- renderTable({
-    inf <- combIDwellIDres()
-    if(is.null(inf)){
-      return();
-    }else{
-      inf;
-    }
-  })
-  
-  ############################## READ ENDOC QPCR DATA ##########################################
-  ## Read file
-  taqDim <- reactive({
-    C <- constVarendoC()
-    if (!is.null(input$dataendoC)){
-      raw <- read.csv(input$dataendoC$datapath, header = TRUE, sep = ",", dec=".")
-      raw<-raw[,-1]
-      raw<-raw[,C$Well2]
-      l<-round_any(rowMaxs(as.matrix(raw),value=T), 100, f = ceiling)
-      l <-max(l)
-      r<-dim(raw)
-      r<-r[2]
-      r<-as.integer(r)
-      lr <- list(l,r)
-      return(lr)
-    }
-  })
-  
-  ############################ GENERAL PLOTS FOR AMPLIFICATION ###############################################
-  generalPlots <- function(){
-    info <- combIDwellIDres()
-    lr <- taqDim()
-    genes <- geneList()
-    #genes <- c("N1", "N2", "RNAseP")
-    pltList <- list()
-    for (i in 1:length(genes)){
-      df<-info[which(info$Target==genes[i]),] # select target
-      df<-df[order(df$Well2),]
-    
-      ## load raw data (fluorescence-RFU per temperature) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      ## Read fluorescence data for target gene
-      inp <- cyclesInput()
-      raw <- inp[i][[1]]
-      raw<-raw[,-1]
-      raw<-raw[,df$Well2]
-      raw_s <- stack(raw)
-      
-      raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
-      colnames(raw_s)<-c("RFU","Well2","Cycles")
-      merge<-merge(raw_s,df,by="Well2")
-      
-      ###plot
-      pltName <- paste(genes[i])
-      pltList[[ pltName ]] = ggplot(data = merge, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
-        geom_line()+
-        ylim(-100, lr[[1]])+ # manually adjust after seeing plot scale - keep same for all plots
-        ggtitle(pltName)
-    }
-    return(pltList)
-  }
-  
-  # Render
-  output$genplots <- renderPlot({
-    plots <- generalPlots()
-    plot_grid(plotlist = plots, ncol = 1)
-  })
-  
-  output$downgen <- downloadHandler(
-    filename = "GeneralPlots.pdf",
-    content = function(file){
-      plots <- generalPlots()
-      p <- plot_grid(plotlist = plots, ncol = 1)
-      save_plot(file, p, ncol = 1, base_height = 8, base_width = 6)
-    }
-  )
-  
-  ############################# AMPLIFICATION CURVE PLOTS FOR EACH GENE (INDET) ################################# 
-  indetPlots <- reactive({
-    info <- combIDwellIDres()
-    lr <- taqDim()
-    genes <- geneList()
-    
-    defPltLs <- list()
-    for (i in 1:length(genes)){
-      ## Select target gene wells
-      df<-info[which(info$Target==genes[i]),] # select target
-      df<-df[order(df$Well2),]
-      ## Read fluorescence data for target gene
-      inp <- cyclesInput()
-      raw <- inp[i][[1]]
-      raw <- raw[,-1]
-      raw <- raw[,df$Well2]
-      raw_s <- stack(raw)
-      raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
-      colnames(raw_s)<-c("RFU","Well2","Cycles")
-      merge<-merge(raw_s,df,by="Well2")
-      
-      ## one-by-one 
-      merge_pn<-merge[merge$Interpretation!="Repeat",]
-      merge_r<-merge[merge$Interpretation=="Repeat",]
-      merge_r_persample<-split(merge_r,merge_r$ID,drop=T)
-      
-      ## Plots
-      pltList <- list()
-      for (z in 1:length(merge_r_persample)){
-        pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]])
-        pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
-          geom_line()+
-          geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
-          ylim(-100, lr[[1]])+ 
-          theme(legend.position = "none")+ 
-          ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))
-      }
-      defPltLs[[i]] <- pltList
-    } 
-    return(defPltLs)
-  })
-    
-  ## Render plots in app
-  output$n1 <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[1]], ncol = 2)
-  })
-  
-  ## Download plots
-  output$downln1 <- downloadHandler(
-    filename = ("N1_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[1]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  # N2 tab
-  output$n2 <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[2]], ncol = 2)
-  })
-  
-  ## Download plots
-  output$downln2 <- downloadHandler(
-    filename = ("N2_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[2]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  #RNAsep tab
-  output$rnasep <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[3]], ncol = 2)
-  })
-  
-  ## Download plots
-  output$downrnasep <- downloadHandler(
-    filename = ("RNAseP_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[3]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  
-  ############################## PICK GENE COLUMNS FROM FLUORESCENCE FILE ###############################3
-  ## 4) Select target gene and match columns in fluorescence file
-  # a) Define function
-  ## matchTarget por archivo independiente
-  matchTarget <- function(tm, gene){
-    Well <- wellID()
-    well_gene <- Well[which(Well$Target==gene),] # select target
-    #Select fluorescence matching columns
-    fluos_gene<-tm[,well_gene$Well2]
-    return(fluos_gene)
-  }
-  
-  ## Misma función que matchTarget pero con un loop para guardar todos los archivos en la misma tabla
-  ## Bastante guarro, pero funciona
-  matchAllTarget <- reactive({
-    Well <- wellID()
-    genes <- SybrGeneList()
-    melt_gene <- TMinput()
-    matchLs <- list()
-    for (i in 1:length(genes)){
-      #Select matching target rows from well_id
-      well_gene <- Well[which(Well$Target==genes[i]),] # select target
-      #Select fluorescence matching columns
-      fluos_gene<-melt_gene[[i]][,well_gene$Well2]
-      matchLs[[i]] <- fluos_gene
-    }
-    return(matchLs)
-  })
-  
-  output$fluosgene <- renderTable({
-    matchAllTarget()
-  })
-  
-  ## Prepare data
-  fluoTemp <- reactive({
-    fluos_gene <- matchAllTarget()
-    melt_gene <- TMinput()
-    genes <- SybrGeneList()
-    LsforPlot <- list()
-    for (i in 1:length(genes)){
-      fluo_temp <- cbind(melt_gene[[i]]$Temperature, fluos_gene[[i]])
-      colnames(fluo_temp)[1] <- "Temperature"
-      LsforPlot[[i]] <- fluo_temp
-    }
-    return(LsforPlot)
-  })
-  
-  output$fluotemp <-renderTable({
-    fluoTemp()
-  })
-  
-  ################################# MELTING CURVE PLOTS ##############################################
-  # Function to repeat temperature columns
-  ## 5) Plot  TM curves
-  # a) Define function
-  rep.col<-function(x,n) {
-    matrix(rep(x,each=n), ncol=n, byrow=TRUE)
-  }
-  
-  TMPlots <- function(tm, gene){
-    fluos_gene <- matchTarget(tm, gene)
-    a<-dim(fluos_gene)
-    b<-a[2]
-    c<-as.integer(b+1)
-    d<-as.integer(2*b)
-    data_gene <- cbind(fluos_gene,rep.col(tm$Temperature,b))
-    if (input$isderiv == TRUE){
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
-    } else if (input$isderiv == FALSE){
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5))
-    }
-  }
-  
-  ##### b) Render plots
-  output$sybrN <- renderPlot({
-    tm <- TMinput()
-    genes <- SybrGeneList()
-    TMPlots(tm[[1]], genes[[1]])
-  })
-  
-  output$sybrRdrp <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[2]], genes[[2]])
-  })
-  
-  output$sybrRpp30 <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[3]], genes[[3]])
-  })
-  
-  output$sybrS <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[4]], genes[[4]])
-  })
-  
-  ## c) Downloads
-  output$downsybrN <- downloadHandler(
-    filename = ("N_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[1]], genes[[1]])
-      dev.off()
-    })
-  
-  output$downsybrRdrp <- downloadHandler(
-    filename = ("Rdrp_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[2]], genes[[2]])
-      dev.off()
-    })
-  
-  output$downsybrRpp30 <- downloadHandler(
-    filename = ("Rdrp_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[3]], genes[[3]])
-      dev.off()
-    })
-  
-  output$downsybrS <- downloadHandler(
-    filename = ("S_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[4]], genes[[4]])
-      dev.off()
-    })
-  
-  ############################## TM RESULTS ##################################
-  ## 7) Load data and generate output table
-  ## a) Generate table for all genes
-  TMTable <- reactive({
-    #Combine all input genes
-    melt_gene <- TMinput()
-    fluos_gene <- matchAllTarget()
-    genes <- SybrGeneList()
-    
-    results_all <- list()
-    for (i in 1:length(genes)){
-      a<-dim(fluos_gene[[i]])
-      b<-a[2]
-      c<-as.integer(b+1)
-      d<-as.integer(2*b)
-      data_gene <- cbind(fluos_gene[[i]],rep.col(melt_gene[[i]]$Temperature,b))
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
-      
-      names(res_gene)<-colnames(fluos_gene[[i]])
-      ## Wells showing unique Tm with Tm/area info
-      dfList <- list()
-      for (j in 1:length(res_gene)){
-        df<-as.data.frame(res_gene[[j]])
-        df<-df[!is.na(df$Tm),6:7]
-        #df$Target <- genes[[i]]
-        dfList[[j]] <- df
-      }
-      
-      names(dfList)<-names(res_gene)
-      
-      multiTm <- which(sapply(dfList, nrow) != 1)
-      length(multiTm) #dont run next step if length multiTm = 0
-      if (length(multiTm > 0)) {
-        dfList<-dfList[-multiTm]
-      }
-      results_gene<-do.call(rbind, dfList)
-      results_gene$Target <- rep(genes[[i]],dim(results_gene)[1])
-      results_all[[i]] <- results_gene
-    }
-    results <- list.stack(results_all)
-    return(results)
-  })
-  
-  ## b) Render table
-  output$tmtable <-renderTable({
-    TMTable()
-    })
-  
-  ## c) Download table
-  output$downloadtable <- downloadHandler(
-    filename = "TMtable.csv",
-    content = function(fname){
-      write.csv(TMTable(), fname, quote = F, row.names = F)}
-  )
-  
-  'fullpath<-paste("/drive/my-drive", "results_SYBR", sep="/")
-  drive_mkdir(fullpath, overwrite = FALSE)#the new folder will be called "results"
-  
-  output$send2drive <-observeEvent(
-    t <- TMTable(),
-    drive_upload(t, path = fullpath)
-  )'
-  
-  ################################# TAQMAN EXCEL ##################################
-  #################################################################################
-  
-  ######### PRINT EMPTY PLATE ###########
+  ############### Empty Plate Tab: Biorad #####################
   platesTable <- function(cnames, controls){
     col1 <- rep(1:8, each=2)
     col2 <- rep(9:16, each=2)
@@ -535,35 +31,34 @@ server <- function(input, output) {
       formatStyle(
         columns = 1:8,
         backgroundColor = "yellow"
-        ) %>%
+      ) %>%
       formatStyle(
         columns = 9:16,
         backgroundColor = "orange"
-        ) %>%
+      ) %>%
       formatStyle(
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
   })
   
-  output$plate <- DT::renderDataTable(
+  output$plate <- renderDataTable(
     platePrint()
   )
   
-  ######################### BIORAD RESULTS #################################
-  ##### Run Information #####
+  ###################### Read "Run Information" Sheet: Biorad ##########################
   bioradruninfo <- reactive({
     res <- input$biorad
     runinfo <- read_xlsx(res$datapath, sheet = "Run Information")
     df <- data.frame(runinfo)
     return(runinfo)
   })
-
-    output$BRruninfo <- renderTable({
+  
+  output$BRruninfo <- renderTable({
     bioradruninfo()
   })
   
-  #### Sample Column ####
+  ##################### Read "Data" Sheet: Biorad ########################################
   bioradsample <- reactive({
     res <- input$biorad
     samples <- read_xlsx(res$datapath, sheet = "Data")
@@ -571,7 +66,7 @@ server <- function(input, output) {
     return(samples)
   })
   
-  ## Well column ###
+  ##################### Input DF Tab: Biorad  #########################################
   inputDF <- function(){
     well <- list()
     counter <- 0
@@ -611,6 +106,7 @@ server <- function(input, output) {
     inputDF()
   )
   
+  ###################### Cq Plate Tab: Biorad ######################
   cqPlate <- reactive({
     inp <- inputDF()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -626,7 +122,7 @@ server <- function(input, output) {
     return(dt)
   })
   
-    ## Convert to datatable to render nicely in shiny
+  ## Convert to datatable to render nicely in shiny
   printCqPlate <- reactive({
     dt <- cqPlate()
     defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
@@ -645,11 +141,12 @@ server <- function(input, output) {
     return(f)
   })
   
-  output$cqplate<- DT::renderDataTable(
+  #### Render Table in App ### 
+  output$cqplate<- renderDataTable(
     printCqPlate()
   )
   
-  #################### Sample Plate ############################
+  #################### Sample Plate Tab: Biorad ############################
   samplePlate <- reactive({
     inp <- inputDF()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -662,7 +159,8 @@ server <- function(input, output) {
     }
     return(dt)
   })
-  ## Convert to datatable to render nicely in shiny
+  
+  ## Convert to datatable to render nicely in shiny ##
   printSamplePlate <- reactive({
     dt <- samplePlate()
     defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
@@ -681,19 +179,52 @@ server <- function(input, output) {
     return(f)
   })
   
-  output$sampleplate<- DT::renderDataTable(
+  ###### Render Table in App ######
+  output$sampleplate<- renderDataTable(
     printSamplePlate()
   )
   
-  #################### Check sample plates #######################
+  ################### Plate Setup MultiChanel: Biorad ########################
+  setupMultiC <- reactive({
+    def <- checkSamples()
+    col1 <- rep(paste("S",1:60, sep = ""),each =2)
+    col2 <- rep(paste(col1, "-", 1:2, sep=""))
+    col3 <- unique(def$first)
+    multic <- as.data.frame(cbind(col1, col2, col3))
+    colnames(multic)<- c("Sample", "Replicate", "Real_ID")
+    return(multic)
+  })
+  
+  setupMultiCDT <- reactive({
+    a <- setupMultiC()
+    defdt <- datatable(a, rownames = F, 
+                       options = list(pageLength = 50))
+    f <- defdt %>%
+      formatStyle(
+        columns = c(1,3),
+        backgroundColor = "seagreen"
+      )%>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = "lightgreen"
+      )
+    return(f)
+  })
+  
+  output$setupmultic <- renderDataTable(
+    setupMultiCDT()
+  )
+  
+  #################### Check Sample Order Tab: Biorad #######################
   checkSamples <- reactive({
     s <- samplePlate()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
     second <- data.frame(d = unlist(s[9:16], use.names = FALSE))
     third <- data.frame(d = unlist(s[17:24], use.names = FALSE))
+    third[ third == "HeLa"] <- NA
     all <- cbind(first, second, third)
     colnames(all) <- c("first", "second", "third")
-    def <- head(all, 120)
+    def <- all[complete.cases(all),]
     
     ## Add "coinciden" to script 
     for (i in 1:nrow(def)){
@@ -705,8 +236,8 @@ server <- function(input, output) {
     }
     return(def)
   })
-    
-    ## Convert to datatable to render nicely in shiny
+  
+  ## Convert to datatable to render nicely in shiny
   checkSamplesDT <- reactive({
     def <- checkSamples()
     defdt <- datatable(def, rownames = F,  options = list(pageLength = 60))
@@ -725,22 +256,22 @@ server <- function(input, output) {
       ) %>%
       formatStyle(
         columns = 4,
-        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'red'))
+        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'tomato'))
       )
     return(f)
   })
   
-  ##### Render Table ####
-  output$samplecheck <- DT::renderDataTable(
+  ####### Render Table in App ####
+  output$samplecheck <- renderDataTable(
     checkSamplesDT()
   )
   
-  ################### Analysis Standard Curve ####################
+  ################### Standard Curve Tab (Table): Biorad #######################
   stCurve <- reactive({
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
     a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
-    a$Dilution <- c("-","-",100,10000,100000)
+    a$Dilution <- c("-","-",100,1000,100000)
     a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]))
     a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
     
@@ -777,6 +308,7 @@ server <- function(input, output) {
     coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
     rownames(coeff) <- c("N1", "N2")
     ###############################################################
+    
     ## log(Copies) ##
     for (i in 1:length(a$N1_avg)){
       if(is.na(a$N1_avg[i])== TRUE){
@@ -795,7 +327,8 @@ server <- function(input, output) {
         a$RNAseP_logcop[i] <- a$RNAseP_avg[i]*coeff[2,2]+coeff[2,1]
       }
     }
-    ## Copies ##
+    
+    ##### Copies #####
     for (i in 1:length(a$N1_logcop)){
       if (is.na(a$N1_logcop[i])){
         a$N1_copies[i] <- NA
@@ -843,7 +376,7 @@ server <- function(input, output) {
     stCurveDT()
   )
   
-  ################### Standard Curve Plots ##########################
+  ####### Coefficients function (reubicar??) ########
   stdCoeffs <- function(){
     a <- stCurve()
     n1 <- a$N1_avg[3:5]
@@ -869,6 +402,7 @@ server <- function(input, output) {
     return(coeff)
   }
   
+  ################### Standard Curve Tab (Plots): Biorad ##########################
   stdPlots <- reactive({
     a <- stCurve()
     
@@ -908,62 +442,15 @@ server <- function(input, output) {
     
     s <- grid.arrange(p1, p2, nrow = 1)
     return(s)
-  
+    
   })
   
+  ##### Render Plots in App #####
   output$std <- renderPlot(
     stdPlots()
   )
   
-  IDWELLtab <- reactive({
-    inp <- inputDF()
-    wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
-    colnames(wellid) <- c("Well", "Target", "Sample")
-    return(wellid)
-  })
-  
-  output$IDWELL <- renderTable(
-    IDWELLtab()
-  )
-  
-  output$downIDWELL <- downloadHandler(
-    filename = "ID_well.csv",
-    content = function(fname){
-      write.csv(IDWELLtab(), fname, quote = F, row.names = F)}
-  )
-  
-  ############ Plate Setup MultiChanel #################### 
-  setupMultiC <- reactive({
-    def <- checkSamples()
-    col1 <- rep(paste("S",1:60, sep = ""),each =2)
-    col2 <- rep(paste(col1, "-", 1:2, sep=""))
-    col3 <- unique(def$first)
-    multic <- as.data.frame(cbind(col1, col2, col3))
-    colnames(multic)<- c("Sample", "Replicate", "Real_ID")
-    return(multic)
-  })
-  
-  setupMultiCDT <- reactive({
-    a <- setupMultiC()
-    defdt <- datatable(a, rownames = F, 
-                       options = list(pageLength = 50))
-    f <- defdt %>%
-      formatStyle(
-        columns = c(1,3),
-        backgroundColor = "seagreen"
-      )%>%
-      formatStyle(
-        columns = 2,
-        backgroundColor = "lightgreen"
-      )
-    return(f)
-  })
-  
-  output$setupmultic <- renderDataTable(
-    setupMultiCDT()
-  )
- 
-  ############# Hidrolysis Probe Plate ###############
+  #################### Analysis Samples Tab: Biorad ###################
   AnalysisSamples <- reactive({
     
     ## Real Id, Sample, Replicate columns
@@ -1155,7 +642,7 @@ server <- function(input, output) {
     c7 <- as.data.frame(c7)
     c8 <- as.data.frame(c8)
     c9 <- as.data.frame(c9)
-  
+    
     c9[] <- lapply(c9, as.character)
     
     indv <- vector()
@@ -1212,7 +699,7 @@ server <- function(input, output) {
     AnalysisSamplesDT()
   })
   
-  ########### Interpretation tab #################
+  ################## Interpretation Tab: Biorad #########################
   interpretation <- reactive({
     an <- AnalysisSamples()
     c10 <- vector()
@@ -1260,11 +747,32 @@ server <- function(input, output) {
     return(f)
   })
   
+  ##### Render in App ####
   output$interpret <- renderDataTable(
     interpretationDT()
   )
   
-  ############ ID_Result ###################
+  
+  ##################### ID Well Tab: Biorad ##############################
+  IDWELLtab <- reactive({
+    inp <- inputDF()
+    wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
+    colnames(wellid) <- c("Well", "Target", "Sample")
+    return(wellid)
+  })
+  
+  output$IDWELL <- renderTable(
+    IDWELLtab()
+  )
+  
+  output$downIDWELL <- downloadHandler(
+    filename = "ID_well.csv",
+    content = function(fname){
+      write.csv(IDWELLtab(), fname, quote = F, row.names = F)}
+  )
+  
+    
+  ################### ID Result Tab: Biorad ###############################
   idresult <- reactive({
     an <- AnalysisSamples()
     int <- interpretation()
@@ -1281,14 +789,14 @@ server <- function(input, output) {
       write.csv(idresult(), fname, quote = F, row.names = F)}
   )  
   
-  
   output$IDRESULT <- renderTable(
     idresult()
   )
   
-  
   ###########################################################################
   ######################### APPLIED QUANT STUDIO ############################
+  
+  ################ Read Applied "Raw Data" Sheet: Applied ###################
   readApplied <- reactive({
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Raw Data")
@@ -1298,10 +806,12 @@ server <- function(input, output) {
     return(df)
   })
   
-  output$prueba <- renderTable(
+  ### Render in App ###
+  output$readapp <- renderTable(
     readApplied()
   )
   
+  ################# Transposed Tab: Applied #####################
   aggApplied <- reactive({
     df <- readApplied()
     final <- df %>%
@@ -1313,10 +823,12 @@ server <- function(input, output) {
     return(f)
   })
   
+  ##### Render in App #####
   output$trans <- renderTable(
     aggApplied()
   )
   
+  ################## N1, N2 and RNAseP Tabs: Applied ######################
   getGenes <- reactive({
     all <- aggApplied()
     
@@ -1347,38 +859,43 @@ server <- function(input, output) {
     return(final)
   })
   
+  ###### Render N1 tab #######
   output$transN1 <- renderTable(
     getGenes()[1]
   )
   
-  ## Download plots
+  ## Download CSV ##
   output$downtransN1 <- downloadHandler(
     filename = "N1.csv",
     content = function(fname){
       write.csv(getGenes()[1], fname, quote = F, row.names = F)}
   )
   
+  ###### Render N2 tab #######
   output$transN2 <- renderTable(
     getGenes()[2]
   )
   
+  ## Download CSV ##
   output$downtransN2 <- downloadHandler(
     filename = "N2.csv",
     content = function(fname){
       write.csv(getGenes()[2], fname, quote = F, row.names = F)}
   )
   
+  ###### Render RNAseP tab #######
   output$transRNAsep <- renderTable(
     getGenes()[3]
   )
   
+  ## Download CSV ##
   output$downtransRNAseP <- downloadHandler(
     filename = "RNAseP.csv",
     content = function(fname){
       write.csv(getGenes()[3], fname, quote = F, row.names = F)}
   )
   
-  ### Run Info ###
+  ############# Read Run Info: Applied ####################
   readAppliedRunInfo <- reactive({
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results")
@@ -1387,11 +904,12 @@ server <- function(input, output) {
     return(df)
   })
   
+  #### Render in App ####
   output$appliedruninfo <- renderTable({
     readAppliedRunInfo()
   })
   
-  ## Read Applied Results sheet ##
+  ############ Read Results: Applied #####################
   readAppliedResults <- reactive({
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
@@ -1405,7 +923,7 @@ server <- function(input, output) {
     readAppliedResults()
   })
   
-  #### Cq values Plate for Applied ###
+  ############ Cq Plate Tab: Applied ##################
   cqPlateApp <- reactive({
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -1444,7 +962,7 @@ server <- function(input, output) {
     printCqPlateApp()
   )
   
-  ############# Sample Plate for Applied ##########################
+  ############# Sample Plate Tab: Applied ##########################
   samplePlateApp <- reactive({
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -1480,7 +998,7 @@ server <- function(input, output) {
     printSamplePlateApp()
   )
   
-  #################### Check Sample plates for Applied #######################
+  #################### Check Sample Order Tab: Applied #######################
   checkSamplesApp <- reactive({
     s <- samplePlateApp()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
@@ -1531,7 +1049,40 @@ server <- function(input, output) {
     checkSamplesAppDT()
   )
   
-  ################### Analysis Standard Curve for Applied #####################
+  ############ Plate Setup MultiChanel for Applied #################### 
+  setupMultiCApp <- reactive({
+    def <- checkSamplesApp()
+    
+    realid <- as.numeric(as.character(def$first))
+    sample <- rep(paste("S",1:(length(realid)/2), sep = ""),each=2)
+    replic <- rep(paste(sample, "-", 1:2, sep=""))
+    
+    multic <- as.data.frame(cbind(sample,replic, realid))
+    colnames(multic)<- c("Sample", "Replicate","Real_ID")
+    return(multic)
+  })
+  
+  setupMultiCAppDT <- reactive({
+    a <- setupMultiCApp()
+    defdt <- datatable(a, rownames = F, 
+                       options = list(pageLength = 50))
+    f <- defdt %>%
+      formatStyle(
+        columns = c(1,3),
+        backgroundColor = "seagreen"
+      )%>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = "lightgreen"
+      )
+    return(f)
+  })
+  
+  output$setupmulticapp <- renderDataTable(
+    setupMultiCAppDT()
+  )
+  
+  ################### Standard Curve Tab (Table): Applied #####################
   stCurveApp <- reactive({
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
@@ -1610,7 +1161,6 @@ server <- function(input, output) {
         a$RNAseP_copies[i] <-10^a$RNAseP_logcop[i]
       }
     }
-    
     return(a)
   })
   
@@ -1641,7 +1191,7 @@ server <- function(input, output) {
     stCurveAppDT()
   )
   
-  ################### Standard Curve Plots for Applied ###########################
+  ####### Coefficients function #######
   stdCoeffsApp <- function(){
     a <- stCurveApp()
     n1 <- a$N1_avg[3:5]
@@ -1668,6 +1218,7 @@ server <- function(input, output) {
     return(coeff)
   }
   
+  ################### Standard Curve Tab (Plots): Applied ###########################
   stdPlotsApp <- reactive({
     a <- stCurveApp()
     n11 <- a$N1_avg[3:5]
@@ -1713,42 +1264,7 @@ server <- function(input, output) {
     stdPlotsApp()
   )
   
-  ############ Plate Setup MultiChanel for Applied #################### 
-  setupMultiCApp <- reactive({
-    def <- checkSamplesApp()
-    
-    realid <- as.numeric(as.character(def$first))
-    sample <- rep(paste("S",1:(length(realid)/2), sep = ""),each=2)
-    replic <- rep(paste(sample, "-", 1:2, sep=""))
-    
-    multic <- as.data.frame(cbind(sample,replic, realid))
-    colnames(multic)<- c("Sample", "Replicate","Real_ID")
-    return(multic)
-  })
-  
-  setupMultiCAppDT <- reactive({
-    a <- setupMultiCApp()
-    defdt <- datatable(a, rownames = F, 
-                       options = list(pageLength = 50))
-    f <- defdt %>%
-      formatStyle(
-        columns = c(1,3),
-        backgroundColor = "seagreen"
-      )%>%
-      formatStyle(
-        columns = 2,
-        backgroundColor = "lightgreen"
-      )
-    return(f)
-  })
-  
-  output$setupmulticapp <- renderDataTable(
-    setupMultiCAppDT()
-  )
-  
-  ###
-  
-  ############# Hidrolysis Probe Plate ###############
+  #################### Analysis Samples Tab: Applied ######################
   AnalysisSamplesApp <- reactive({
     
     ## Real Id, Sample, Replicate columns
@@ -1944,8 +1460,8 @@ server <- function(input, output) {
     c9 <- as.data.frame(c9)
     
     c9[] <- lapply(c9, as.character)
-    indv <- vector()
     
+    indv <- vector()
     for (i in c9[,1]){
       if (i == "CI"){
         indv <- append(indv, "Calidad Insuficiente")
@@ -2001,7 +1517,7 @@ server <- function(input, output) {
     AnalysisSamplesAppDT()
   })
   
-  ########### Interpretation tab for Applied #################
+  ############# Interpretation Tab: Applied ####################
   interpretationApp <- reactive({
     an <- AnalysisSamplesApp()
     c10 <- vector()
@@ -2049,12 +1565,12 @@ server <- function(input, output) {
     return(f)
   })
   
+  ### Render in App ###
   output$interpretapp <- renderDataTable(
     interpretationAppDT()
   )
   
-  
-  ############## ID Well for Applied ###############
+  ############## ID Well Tab: Applied ###############
   IDWELLtabApp <- reactive({
     inp <- readAppliedResults()
     wellid <- cbind(inp$Well, as.character(inp$Target), inp$Sample)
@@ -2072,7 +1588,7 @@ server <- function(input, output) {
       write.csv(IDWELLtabApp(), fname, quote = F, row.names = F)}
   )
   
-  ############ ID_Result Applied ###################
+  ############ ID Result Tab: Applied ###################
   idresultApp <- reactive({
     an <- AnalysisSamplesApp()
     int <- interpretationApp()
@@ -2093,5 +1609,504 @@ server <- function(input, output) {
     idresultApp()
   )
   
+  ###################################### TAQMAN #####################################
+  ###################################################################################
+  
+  ################# Read CSVs: Taqman ############################
+  cyclesInput <- reactive({
+    dat <- input$taqmancsv
+    if (!is.null(dat)){
+      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=",", dec=".")
+      tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
+      return(tbl_list)
+    }
+  })
+  
+  ################ Create gene list from input files ###############
+  geneList <- reactive({
+    dat <- input$taqmancsv
+    lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
+                                                   basename(dat$name)))
+    lst <- unlist(lst)
+    out <- unique(lst)
+    return(out)
+  })
+  
+  
+  ################# Well ID Tab: Taqman ###################
+  taqwellID <- reactive({
+    raw <- input$taqwellid
+    if (!is.null(raw)){
+      data = read.csv(raw$datapath, sep = ';', header = TRUE, dec=',');
+      data[is.na(data)]<-""
+      colnames(data)[3] <- "ID"
+      return(data)
+    }else{
+      return (NULL);
+    }  
+  })
+  ## b) Call function and display in app
+  output$taqmanwell <- renderTable({
+    newWell = taqwellID()
+    if(is.null(newWell)){
+      return();
+    }else{
+      newWell;
+    }
+  })
+  
+  ################# ID Result Tab: Taqman ###################
+  taqIDRes <- reactive({
+    idres <- input$taqidres
+    if (!is.null(idres)){
+      data <- read.csv(idres$datapath, sep = ';', header = TRUE, dec=',');
+      data <- data[,-3] 
+      return(data)
+    }
+  })
+  
+  ## Display table 
+  output$taqmanidres <- renderTable({
+    res <- taqIDRes()
+    if(is.null(res)){
+      return();
+    }else{
+      res;
+    }
+  })
+  
+  ############## Combine ID well and ID results ###################
+  combIDwellIDres <- reactive({
+    wellid <- taqwellID()
+    idres <- taqIDRes()
+    info <-merge(idres,wellid,by="ID")
+    info$Well2<-sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE)
+    info<-as.data.frame(info)
+    return(info)
+  })
+  
+  ########## C Tab: Taqman #################
+  constVarendoC <- reactive({
+    info <- combIDwellIDres()
+    C<-info[which(info$Target==input$endoC),] # select target
+    C<-C[order(C$Well2),]
+    return(C)
+  })
+  
+  output$c <- renderTable({
+    constVarendoC()
+  })
+  
+  ##### Info Tab: Taqman ########
+  output$info <- renderTable({
+    inf <- combIDwellIDres()
+    if(is.null(inf)){
+      return();
+    }else{
+      inf;
+    }
+  })
+  
+  ########### Plot dimensions: Taqman ############
+  taqDim <- reactive({
+    C <- constVarendoC()
+    if (!is.null(input$dataendoC)){
+      raw <- read.csv(input$dataendoC$datapath, header = TRUE, sep = ",", dec=".")
+      raw<-raw[,-1]
+      raw<-raw[,C$Well2]
+      l<-round_any(rowMaxs(as.matrix(raw),value=T), 100, f = ceiling)
+      l <-max(l)
+      r<-dim(raw)
+      r<-r[2]
+      r<-as.integer(r)
+      lr <- list(l,r)
+      return(lr)
+    }
+  })
+  
+  ################## General Plots Tab: Taqman ##################
+  generalPlots <- function(){
+    info <- combIDwellIDres()
+    lr <- taqDim()
+    genes <- geneList()
+    #genes <- c("N1", "N2", "RNAseP")
+    pltList <- list()
+    for (i in 1:length(genes)){
+      df<-info[which(info$Target==genes[i]),] # select target
+      df<-df[order(df$Well2),]
+      
+      ## load raw data (fluorescence-RFU per temperature) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      ## Read fluorescence data for target gene
+      inp <- cyclesInput()
+      raw <- inp[i][[1]]
+      raw<-raw[,-1]
+      raw<-raw[,df$Well2]
+      raw_s <- stack(raw)
+      
+      raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
+      colnames(raw_s)<-c("RFU","Well2","Cycles")
+      merge<-merge(raw_s,df,by="Well2")
+      
+      ###plot
+      pltName <- paste(genes[i])
+      pltList[[ pltName ]] = ggplot(data = merge, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
+        geom_line()+
+        ylim(-100, lr[[1]])+ # manually adjust after seeing plot scale - keep same for all plots
+        ggtitle(pltName)
+    }
+    return(pltList)
+  }
+  
+  # Render
+  output$genplots <- renderPlot({
+    plots <- generalPlots()
+    plot_grid(plotlist = plots, ncol = 1)
+  })
+  
+  output$downgen <- downloadHandler(
+    filename = "GeneralPlots.pdf",
+    content = function(file){
+      plots <- generalPlots()
+      p <- plot_grid(plotlist = plots, ncol = 1)
+      save_plot(file, p, ncol = 1, base_height = 8, base_width = 6)
+    }
+  )
+  
+  ############ Indetermined Plots: Taqman #################
+  indetPlots <- reactive({
+    info <- combIDwellIDres()
+    lr <- taqDim()
+    genes <- geneList()
+    
+    defPltLs <- list()
+    for (i in 1:length(genes)){
+      ## Select target gene wells
+      df<-info[which(info$Target==genes[i]),] # select target
+      df<-df[order(df$Well2),]
+      ## Read fluorescence data for target gene
+      inp <- cyclesInput()
+      raw <- inp[i][[1]]
+      raw <- raw[,-1]
+      raw <- raw[,df$Well2]
+      raw_s <- stack(raw)
+      raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
+      colnames(raw_s)<-c("RFU","Well2","Cycles")
+      merge<-merge(raw_s,df,by="Well2")
+      
+      ## one-by-one 
+      merge_pn<-merge[merge$Interpretation!="Repeat",]
+      merge_r<-merge[merge$Interpretation=="Repeat",]
+      merge_r_persample<-split(merge_r,merge_r$ID,drop=T)
+      
+      ## Plots
+      pltList <- list()
+      for (z in 1:length(merge_r_persample)){
+        pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]])
+        pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
+          geom_line()+
+          geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+          ylim(-100, lr[[1]])+ 
+          theme(legend.position = "none")+ 
+          ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))
+      }
+      defPltLs[[i]] <- pltList
+    } 
+    return(defPltLs)
+  })
+  
+  ## Render plots in app
+  output$n1 <- renderPlot({
+    ls <- indetPlots()
+    plot_grid(plotlist = ls[[1]], ncol = 2)
+  })
+  
+  ## Download plots
+  output$downln1 <- downloadHandler(
+    filename = ("N1_IndetPlots.pdf"),
+    content = function(file){
+      plots <- indetPlots()
+      p <- plot_grid(plotlist = plots[[1]], ncol = 2)
+      save_plot(file, p, ncol = 2, paper="a4")
+    }
+  )
+  # N2 tab
+  output$n2 <- renderPlot({
+    ls <- indetPlots()
+    plot_grid(plotlist = ls[[2]], ncol = 2)
+  })
+  
+  ## Download plots
+  output$downln2 <- downloadHandler(
+    filename = ("N2_IndetPlots.pdf"),
+    content = function(file){
+      plots <- indetPlots()
+      p <- plot_grid(plotlist = plots[[2]], ncol = 2)
+      save_plot(file, p, ncol = 2, paper="a4")
+    }
+  )
+  
+  #RNAsep tab
+  output$rnasep <- renderPlot({
+    ls <- indetPlots()
+    plot_grid(plotlist = ls[[3]], ncol = 2)
+  })
+  
+  ## Download plots
+  output$downrnasep <- downloadHandler(
+    filename = ("RNAseP_IndetPlots.pdf"),
+    content = function(file){
+      plots <- indetPlots()
+      p <- plot_grid(plotlist = plots[[3]], ncol = 2)
+      save_plot(file, p, ncol = 2, paper="a4")
+    }
+  )
+  
+  
+  ###################################### SYBR #####################################
+  ###################################################################################
+  
+  ####### Read CSVs with Tm: SYBR ######### 
+  TMinput <- reactive({
+    dat <- input$sybrcsv
+    if (!is.null(dat)){
+      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=";", dec=",")
+      tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
+      return(tbl_list)
+    }
+  })
+  
+  ######## Gene List: SYBR ###########
+  SybrGeneList <- reactive({
+    dat <- input$sybrcsv
+    lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
+                                                   basename(dat$name)))
+    lst <- unlist(lst)
+    out <- unique(lst)
+    return(out)
+  })
+  
+  ######## Well ID: SYBR ###########
+  wellID <- reactive({
+    raw <- input$wellid
+    if (!is.null(raw)){
+      data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
+      ## Correct Well names, adds new column called Well2 to data 
+      data$Well2<-sub('(^[A-Z]+)0', "\\1", data$Well, perl=TRUE) #replace f.i. A01 by A1
+      return(data)
+    }else{
+      return (NULL);
+    }  
+  })
+  ## b) Call function and display in app
+  output$well <- renderTable({
+    newWell = wellID()
+    if(is.null(newWell)){
+      return();
+    }else{
+      newWell;
+    }
+  })
+
+  
+  ################# Fluos_Gene Tab: SYBR ###############
+  ##### Select target gene and match columns in fluorescence file
+  ## matchTarget por archivo independiente
+  matchTarget <- function(tm, gene){
+    Well <- wellID()
+    well_gene <- Well[which(Well$Target==gene),] # select target
+    #Select fluorescence matching columns
+    fluos_gene<-tm[,well_gene$Well2]
+    return(fluos_gene)
+  }
+  
+  ## Misma función que matchTarget pero con un loop para guardar todos los archivos en la misma tabla
+  ## Bastante guarro, pero funciona
+  matchAllTarget <- reactive({
+    Well <- wellID()
+    genes <- SybrGeneList()
+    melt_gene <- TMinput()
+    matchLs <- list()
+    for (i in 1:length(genes)){
+      #Select matching target rows from well_id
+      well_gene <- Well[which(Well$Target==genes[i]),] # select target
+      #Select fluorescence matching columns
+      fluos_gene<-melt_gene[[i]][,well_gene$Well2]
+      matchLs[[i]] <- fluos_gene
+    }
+    return(matchLs)
+  })
+  
+  output$fluosgene <- renderTable({
+    matchAllTarget()
+  })
+  
+  ############ Fluo Temp Tab: SYBR ###############
+  fluoTemp <- reactive({
+    fluos_gene <- matchAllTarget()
+    melt_gene <- TMinput()
+    genes <- SybrGeneList()
+    LsforPlot <- list()
+    for (i in 1:length(genes)){
+      fluo_temp <- cbind(melt_gene[[i]]$Temperature, fluos_gene[[i]])
+      colnames(fluo_temp)[1] <- "Temperature"
+      LsforPlot[[i]] <- fluo_temp
+    }
+    return(LsforPlot)
+  })
+  
+  output$fluotemp <-renderTable({
+    fluoTemp()
+  })
+  
+  ############# Melting Curve Plots: SYBR ##################
+  # Function to repeat temperature columns
+  ## 5) Plot  TM curves
+  # a) Define function
+  rep.col<-function(x,n) {
+    matrix(rep(x,each=n), ncol=n, byrow=TRUE)
+  }
+  
+  TMPlots <- function(tm, gene){
+    fluos_gene <- matchTarget(tm, gene)
+    a<-dim(fluos_gene)
+    b<-a[2]
+    c<-as.integer(b+1)
+    d<-as.integer(2*b)
+    data_gene <- cbind(fluos_gene,rep.col(tm$Temperature,b))
+    if (input$isderiv == TRUE){
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
+    } else if (input$isderiv == FALSE){
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5))
+    }
+  }
+  
+  ##### b) Render plots for each gene in a different tab
+  output$sybrN <- renderPlot({
+    tm <- TMinput()
+    genes <- SybrGeneList()
+    TMPlots(tm[[1]], genes[[1]])
+  })
+  
+  output$sybrRdrp <- renderPlot({
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[2]], genes[[2]])
+  })
+  
+  output$sybrRpp30 <- renderPlot({
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[3]], genes[[3]])
+  })
+  
+  output$sybrS <- renderPlot({
+    genes <- SybrGeneList()
+    tm <- TMinput()
+    TMPlots(tm[[4]], genes[[4]])
+  })
+  
+  ## c) Downloads
+  output$downsybrN <- downloadHandler(
+    filename = ("N_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[1]], genes[[1]])
+      dev.off()
+    })
+  
+  output$downsybrRdrp <- downloadHandler(
+    filename = ("Rdrp_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[2]], genes[[2]])
+      dev.off()
+    })
+  
+  output$downsybrRpp30 <- downloadHandler(
+    filename = ("Rdrp_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[3]], genes[[3]])
+      dev.off()
+    })
+  
+  output$downsybrS <- downloadHandler(
+    filename = ("S_TMPlots.pdf"),
+    content = function(file){
+      pdf(file)
+      tm <- TMinput()
+      genes <- SybrGeneList()
+      p <- TMPlots(tm[[4]], genes[[4]])
+      dev.off()
+    })
+  
+  ################## TM Results: SYBR #######################
+  ## 7) Load data and generate output table
+  ## a) Generate table for all genes
+  TMTable <- reactive({
+    #Combine all input genes
+    melt_gene <- TMinput()
+    fluos_gene <- matchAllTarget()
+    genes <- SybrGeneList()
+    
+    results_all <- list()
+    for (i in 1:length(genes)){
+      a<-dim(fluos_gene[[i]])
+      b<-a[2]
+      c<-as.integer(b+1)
+      d<-as.integer(2*b)
+      data_gene <- cbind(fluos_gene[[i]],rep.col(melt_gene[[i]]$Temperature,b))
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
+      
+      names(res_gene)<-colnames(fluos_gene[[i]])
+      ## Wells showing unique Tm with Tm/area info
+      dfList <- list()
+      for (j in 1:length(res_gene)){
+        df<-as.data.frame(res_gene[[j]])
+        df<-df[!is.na(df$Tm),6:7]
+        #df$Target <- genes[[i]]
+        dfList[[j]] <- df
+      }
+      
+      names(dfList)<-names(res_gene)
+      
+      multiTm <- which(sapply(dfList, nrow) != 1)
+      length(multiTm) #dont run next step if length multiTm = 0
+      if (length(multiTm > 0)) {
+        dfList<-dfList[-multiTm]
+      }
+      results_gene<-do.call(rbind, dfList)
+      results_gene$Target <- rep(genes[[i]],dim(results_gene)[1])
+      results_all[[i]] <- results_gene
+    }
+    results <- list.stack(results_all)
+    return(results)
+  })
+  
+  ## b) Render table
+  output$tmtable <-renderTable({
+    TMTable()
+    })
+  
+  ## c) Download table
+  output$downloadtable <- downloadHandler(
+    filename = "TMtable.csv",
+    content = function(fname){
+      write.csv(TMTable(), fname, quote = F, row.names = F)}
+  )
+  
+  'fullpath<-paste("/drive/my-drive", "results_SYBR", sep="/")
+  drive_mkdir(fullpath, overwrite = FALSE)#the new folder will be called "results"
+  
+  output$send2drive <-observeEvent(
+    t <- TMTable(),
+    drive_upload(t, path = fullpath)
+  )'
   
 }

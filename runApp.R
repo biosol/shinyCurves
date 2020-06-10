@@ -19,7 +19,7 @@ library(janitor)
 source("/home/sonia/Documentos/Covid19/shiny-app/ui.R")
 source("/home/sonia/Documentos/Covid19/shiny-app/server.R")
 
-setwd("/home/sonia/Documentos/Covid19/shiny-app/")
+setwd("/home/sonia/Documentos/Covid19/shiny-app/qPCR-shiny-1653ffa849b74fd4312faca5729450bf71602a9b/")
 #Call app
 app <- shinyApp(ui = ui, server = server)
 #Run app
