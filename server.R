@@ -20,7 +20,7 @@ server <- function(input, output) {
     return(df)
   }
   
-  platePrint <- reactive({
+  platePrint <- function(){
     p1 <- platesTable(1:8, c("NTC","NTC","EXP-5","EXP-5","EXP-4","EXP-4", "EXP-2","EXP-2"))
     p2 <- platesTable(9:16, c("NTC","NTC","EXP-5","EXP-5","EXP-4","EXP-4", "EXP-2","EXP-2"))
     p3 <- platesTable(17:24, c("NTC","NTC"," "," "," "," ", "HeLa","HeLa"))
@@ -40,31 +40,31 @@ server <- function(input, output) {
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
-  })
+  }
   
   output$plate <- renderDataTable(
     platePrint()
   )
   
   ###################### Read "Run Information" Sheet: Biorad ##########################
-  bioradruninfo <- reactive({
+  bioradruninfo <- function(){
     res <- input$biorad
     runinfo <- read_xlsx(res$datapath, sheet = "Run Information")
     df <- data.frame(runinfo)
     return(runinfo)
-  })
+  }
   
   output$BRruninfo <- renderTable({
     bioradruninfo()
   })
   
   ##################### Read "Data" Sheet: Biorad ########################################
-  bioradsample <- reactive({
+  bioradsample <- function(){
     res <- input$biorad
     samples <- read_xlsx(res$datapath, sheet = "Data")
     df <- data.frame(samples)
-    return(samples)
-  })
+    return(df)
+  }
   
   ##################### Input DF Tab: Biorad  #########################################
   inputDF <- function(){
@@ -107,7 +107,7 @@ server <- function(input, output) {
   )
   
   ###################### Cq Plate Tab: Biorad ######################
-  cqPlate <- reactive({
+  cqPlate <- function(){
     inp <- inputDF()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
@@ -120,10 +120,10 @@ server <- function(input, output) {
     dt <- dt %>% 
       mutate_if(is.numeric, round, digits = 3)
     return(dt)
-  })
+  }
   
   ## Convert to datatable to render nicely in shiny
-  printCqPlate <- reactive({
+  printCqPlate <- function(){
     dt <- cqPlate()
     defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
     f <- defdt %>% 
@@ -139,7 +139,7 @@ server <- function(input, output) {
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
-  })
+  }
   
   #### Render Table in App ### 
   output$cqplate<- renderDataTable(
@@ -147,7 +147,7 @@ server <- function(input, output) {
   )
   
   #################### Sample Plate Tab: Biorad ############################
-  samplePlate <- reactive({
+  samplePlate <- function(){
     inp <- inputDF()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
@@ -158,10 +158,10 @@ server <- function(input, output) {
       e <- e + 24
     }
     return(dt)
-  })
+  }
   
   ## Convert to datatable to render nicely in shiny ##
-  printSamplePlate <- reactive({
+  printSamplePlate <- function(){
     dt <- samplePlate()
     defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
     f <- defdt %>% 
@@ -177,7 +177,7 @@ server <- function(input, output) {
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
-  })
+  }
   
   ###### Render Table in App ######
   output$sampleplate<- renderDataTable(
@@ -185,7 +185,7 @@ server <- function(input, output) {
   )
   
   ################### Plate Setup MultiChanel: Biorad ########################
-  setupMultiC <- reactive({
+  setupMultiC <- function(){
     def <- checkSamples()
     col1 <- rep(paste("S",1:60, sep = ""),each =2)
     col2 <- rep(paste(col1, "-", 1:2, sep=""))
@@ -193,9 +193,9 @@ server <- function(input, output) {
     multic <- as.data.frame(cbind(col1, col2, col3))
     colnames(multic)<- c("Sample", "Replicate", "Real_ID")
     return(multic)
-  })
+  }
   
-  setupMultiCDT <- reactive({
+  setupMultiCDT <- function(){
     a <- setupMultiC()
     defdt <- datatable(a, rownames = F, 
                        options = list(pageLength = 50))
@@ -209,14 +209,14 @@ server <- function(input, output) {
         backgroundColor = "lightgreen"
       )
     return(f)
-  })
+  }
   
   output$setupmultic <- renderDataTable(
     setupMultiCDT()
   )
   
   #################### Check Sample Order Tab: Biorad #######################
-  checkSamples <- reactive({
+  checkSamples <- function(){
     s <- samplePlate()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
     second <- data.frame(d = unlist(s[9:16], use.names = FALSE))
@@ -235,10 +235,10 @@ server <- function(input, output) {
       }
     }
     return(def)
-  })
+  }
   
   ## Convert to datatable to render nicely in shiny
-  checkSamplesDT <- reactive({
+  checkSamplesDT <- function(){
     def <- checkSamples()
     defdt <- datatable(def, rownames = F,  options = list(pageLength = 60))
     f <- defdt %>% 
@@ -259,7 +259,7 @@ server <- function(input, output) {
         backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'tomato'))
       )
     return(f)
-  })
+  }
   
   ####### Render Table in App ####
   output$samplecheck <- renderDataTable(
@@ -267,7 +267,7 @@ server <- function(input, output) {
   )
   
   ################### Standard Curve Tab (Table): Biorad #######################
-  stCurve <- reactive({
+  stCurve <- function(){
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
     a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
@@ -347,10 +347,10 @@ server <- function(input, output) {
       }
     }
     return(a)
-  })
+  }
   
   #### Convert to datatable ####
-  stCurveDT <- reactive({
+  stCurveDT <- function(){
     a <- stCurve()
     ## Transform into data table
     defdt <- datatable(a, rownames = F)
@@ -369,10 +369,10 @@ server <- function(input, output) {
       )
     
     return(dt)
-  })
+  }
   
   ##### Render Table ####
-  output$stdcurve <- DT::renderDataTable(
+  output$stdcurve <- renderDataTable(
     stCurveDT()
   )
   
@@ -403,7 +403,7 @@ server <- function(input, output) {
   }
   
   ################### Standard Curve Tab (Plots): Biorad ##########################
-  stdPlots <- reactive({
+  stdPlots <- function(){
     a <- stCurve()
     
     n11 <- a$N1_avg[3:5]
@@ -443,7 +443,7 @@ server <- function(input, output) {
     s <- grid.arrange(p1, p2, nrow = 1)
     return(s)
     
-  })
+  }
   
   ##### Render Plots in App #####
   output$std <- renderPlot(
@@ -451,7 +451,7 @@ server <- function(input, output) {
   )
   
   #################### Analysis Samples Tab: Biorad ###################
-  AnalysisSamples <- reactive({
+  AnalysisSamples <- function(){
     
     ## Real Id, Sample, Replicate columns
     a <- setupMultiC()
@@ -664,9 +664,9 @@ server <- function(input, output) {
     
     final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9, indv))
     return(final)
-  })
+  }
   
-  AnalysisSamplesDT <- reactive({
+  AnalysisSamplesDT <- function(){
     df <- AnalysisSamples()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
     
@@ -692,15 +692,14 @@ server <- function(input, output) {
         backgroundColor = "lemonchiffon"
       )
     return(f)
-    
-  })
+  }
   
   output$analysis <- renderDataTable({
     AnalysisSamplesDT()
   })
   
   ################## Interpretation Tab: Biorad #########################
-  interpretation <- reactive({
+  interpretation <- function(){
     an <- AnalysisSamples()
     c10 <- vector()
     s1 <- seq(from=1, to=120, by=2)
@@ -731,10 +730,9 @@ server <- function(input, output) {
     final <- cbind(c10, interp)
     colnames(final) <- c("", "Interpretation")
     return(final)
-  })
+  }
   
-  
-  interpretationDT <- reactive({
+  interpretationDT <- function(){
     df <- interpretation()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 60))
     
@@ -745,7 +743,7 @@ server <- function(input, output) {
                                      c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
       )
     return(f)
-  })
+  }
   
   ##### Render in App ####
   output$interpret <- renderDataTable(
@@ -754,12 +752,12 @@ server <- function(input, output) {
   
   
   ##################### ID Well Tab: Biorad ##############################
-  IDWELLtab <- reactive({
+  IDWELLtab <- function(){
     inp <- inputDF()
     wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
     colnames(wellid) <- c("Well", "Target", "Sample")
     return(wellid)
-  })
+  }
   
   output$IDWELL <- renderTable(
     IDWELLtab()
@@ -773,15 +771,14 @@ server <- function(input, output) {
   
     
   ################### ID Result Tab: Biorad ###############################
-  idresult <- reactive({
+  idresult <- function(){
     an <- AnalysisSamples()
     int <- interpretation()
     realid <- unique(as.numeric(as.character(an$Real_ID)))
     final <- as.data.frame(cbind(realid, int$Interpretation))
     colnames(final)<- c("ID", "Interpretation")
     return(final)
-    
-  })
+  }
   
   output$downidres <- downloadHandler(
     filename = "ID_result.csv",
@@ -797,14 +794,14 @@ server <- function(input, output) {
   ######################### APPLIED QUANT STUDIO ############################
   
   ################ Read Applied "Raw Data" Sheet: Applied ###################
-  readApplied <- reactive({
+  readApplied <- function(){
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Raw Data")
     df <- data.frame(samples)
     df <- df[-c(1:44),1:4]
     colnames(df) <- c("Well", "Well_Position", "Cycle","Fluorescence")
     return(df)
-  })
+  }
   
   ### Render in App ###
   output$readapp <- renderTable(
@@ -812,7 +809,7 @@ server <- function(input, output) {
   )
   
   ################# Transposed Tab: Applied #####################
-  aggApplied <- reactive({
+  aggApplied <- function(){
     df <- readApplied()
     final <- df %>%
       pivot_wider(names_from = Cycle, values_from = Fluorescence)
@@ -821,7 +818,7 @@ server <- function(input, output) {
     f <- final %>%
       row_to_names(row_number = 2)
     return(f)
-  })
+  }
   
   ##### Render in App #####
   output$trans <- renderTable(
@@ -829,7 +826,7 @@ server <- function(input, output) {
   )
   
   ################## N1, N2 and RNAseP Tabs: Applied ######################
-  getGenes <- reactive({
+  getGenes <- function(){
     all <- aggApplied()
     
     n1 <- vector()
@@ -857,7 +854,7 @@ server <- function(input, output) {
     
     final <- list(n1_def, n2_def, rnasep_def)
     return(final)
-  })
+  }
   
   ###### Render N1 tab #######
   output$transN1 <- renderTable(
@@ -896,13 +893,13 @@ server <- function(input, output) {
   )
   
   ############# Read Run Info: Applied ####################
-  readAppliedRunInfo <- reactive({
+  readAppliedRunInfo <- function(){
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results")
     df <- data.frame(samples)
     df <- df[1:44,]
     return(df)
-  })
+  }
   
   #### Render in App ####
   output$appliedruninfo <- renderTable({
@@ -910,21 +907,21 @@ server <- function(input, output) {
   })
   
   ############ Read Results: Applied #####################
-  readAppliedResults <- reactive({
+  readAppliedResults <- function(){
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
     df <- data.frame(samples)
     df <- df[-c(1:44),c(1,2,4,5,7,9)]
     colnames(df) <- c("Well", "Well_Position","Sample", "Target","Fluor","Cq")
     return(df)
-  })
+  }
   
   output$appliedres <- renderTable({
     readAppliedResults()
   })
   
   ############ Cq Plate Tab: Applied ##################
-  cqPlateApp <- reactive({
+  cqPlateApp <- function(){
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
@@ -937,10 +934,10 @@ server <- function(input, output) {
     dt <- dt %>% 
       mutate_if(is.numeric, round, digits = 3)
     return(dt)
-  })
+  }
   
   ## Convert to datatable to render nicely in shiny
-  printCqPlateApp <- reactive({
+  printCqPlateApp <- function(){
     dt <- cqPlateApp()
     defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
     f <- defdt %>% 
@@ -956,14 +953,14 @@ server <- function(input, output) {
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
-  })
+  }
   
   output$cqplateapp<- renderDataTable(
     printCqPlateApp()
   )
   
   ############# Sample Plate Tab: Applied ##########################
-  samplePlateApp <- reactive({
+  samplePlateApp <- function(){
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
@@ -974,9 +971,10 @@ server <- function(input, output) {
       e <- e + 24
     }
     return(dt)
-  })
+  }
+  
   ## Convert to datatable to render nicely in shiny
-  printSamplePlateApp <- reactive({
+  printSamplePlateApp <- function(){
     dt <- samplePlateApp()
     defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
     f <- defdt %>% 
@@ -992,14 +990,14 @@ server <- function(input, output) {
         columns = 17:24,
         backgroundColor = "lightblue")
     return(f)
-  })
+  }
   
   output$sampleplateapp<- renderDataTable(
     printSamplePlateApp()
   )
   
   #################### Check Sample Order Tab: Applied #######################
-  checkSamplesApp <- reactive({
+  checkSamplesApp <- function(){
     s <- samplePlateApp()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
     second <- data.frame(d = unlist(s[9:16], use.names = FALSE))
@@ -1018,10 +1016,10 @@ server <- function(input, output) {
       }
     }
     return(def)
-  })
+  }
   
   ## Convert to datatable to render nicely in shiny
-  checkSamplesAppDT <- reactive({
+  checkSamplesAppDT <- function(){
     def <- checkSamplesApp()
     defdt <- datatable(def, rownames = F,  options = list(pageLength = 60))
     f <- defdt %>% 
@@ -1042,7 +1040,7 @@ server <- function(input, output) {
         backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'tomato'))
       )
     return(f)
-  })
+  }
   
   ##### Render Table ####
   output$samplecheckapp <- renderDataTable(
@@ -1050,7 +1048,7 @@ server <- function(input, output) {
   )
   
   ############ Plate Setup MultiChanel for Applied #################### 
-  setupMultiCApp <- reactive({
+  setupMultiCApp <- function(){
     def <- checkSamplesApp()
     
     realid <- as.numeric(as.character(def$first))
@@ -1060,9 +1058,9 @@ server <- function(input, output) {
     multic <- as.data.frame(cbind(sample,replic, realid))
     colnames(multic)<- c("Sample", "Replicate","Real_ID")
     return(multic)
-  })
+  }
   
-  setupMultiCAppDT <- reactive({
+  setupMultiCAppDT <- function(){
     a <- setupMultiCApp()
     defdt <- datatable(a, rownames = F, 
                        options = list(pageLength = 50))
@@ -1076,14 +1074,14 @@ server <- function(input, output) {
         backgroundColor = "lightgreen"
       )
     return(f)
-  })
+  }
   
   output$setupmulticapp <- renderDataTable(
     setupMultiCAppDT()
   )
   
   ################### Standard Curve Tab (Table): Applied #####################
-  stCurveApp <- reactive({
+  stCurveApp <- function(){
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
     a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
@@ -1162,10 +1160,10 @@ server <- function(input, output) {
       }
     }
     return(a)
-  })
+  }
   
   #### Convert to datatable ####
-  stCurveAppDT <- reactive({
+  stCurveAppDT <- function(){
     a <- stCurveApp()
     ## Transform into data table
     defdt <- datatable(a, rownames = F)
@@ -1184,7 +1182,7 @@ server <- function(input, output) {
       )
     
     return(dt)
-  })
+  }
   
   ##### Render Table ####
   output$stdcurveapp <- renderDataTable(
@@ -1219,7 +1217,7 @@ server <- function(input, output) {
   }
   
   ################### Standard Curve Tab (Plots): Applied ###########################
-  stdPlotsApp <- reactive({
+  stdPlotsApp <- function(){
     a <- stCurveApp()
     n11 <- a$N1_avg[3:5]
     n22 <- a$N2_avg[3:5]
@@ -1257,15 +1255,14 @@ server <- function(input, output) {
     
     s <- grid.arrange(p1, p2, nrow = 1)
     return(s)
-    
-  })
+  }
   
   output$stdapp <- renderPlot(
     stdPlotsApp()
   )
   
   #################### Analysis Samples Tab: Applied ######################
-  AnalysisSamplesApp <- reactive({
+  AnalysisSamplesApp <- function(){
     
     ## Real Id, Sample, Replicate columns
     a <- setupMultiCApp()
@@ -1480,10 +1477,9 @@ server <- function(input, output) {
     
     final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9,indv))
     return(final)
-  })
+  }
   
-  
-  AnalysisSamplesAppDT <- reactive({
+  AnalysisSamplesAppDT <- function(){
     df <- AnalysisSamplesApp()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
     
@@ -1510,15 +1506,14 @@ server <- function(input, output) {
       )
     
     return(f)
-    
-  })
+  }
   
   output$analysisapp <- renderDataTable({
     AnalysisSamplesAppDT()
   })
   
   ############# Interpretation Tab: Applied ####################
-  interpretationApp <- reactive({
+  interpretationApp <- function(){
     an <- AnalysisSamplesApp()
     c10 <- vector()
     s1 <- seq(from=1, to=length(an[,1]), by=2)
@@ -1549,10 +1544,10 @@ server <- function(input, output) {
     final <- cbind(c10, interp)
     colnames(final) <- c("", "Interpretation")
     return(final)
-  })
+  }
   
   
-  interpretationAppDT <- reactive({
+  interpretationAppDT <- function(){
     df <- interpretationApp()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 60))
     
@@ -1563,7 +1558,7 @@ server <- function(input, output) {
                                      c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
       )
     return(f)
-  })
+  }
   
   ### Render in App ###
   output$interpretapp <- renderDataTable(
@@ -1571,12 +1566,12 @@ server <- function(input, output) {
   )
   
   ############## ID Well Tab: Applied ###############
-  IDWELLtabApp <- reactive({
+  IDWELLtabApp <- function(){
     inp <- readAppliedResults()
     wellid <- cbind(inp$Well, as.character(inp$Target), inp$Sample)
     colnames(wellid) <- c("Well", "Target", "Sample")
     return(wellid)
-  })
+  }
   
   output$IDWELLApp <- renderTable(
     IDWELLtabApp()
@@ -1589,15 +1584,14 @@ server <- function(input, output) {
   )
   
   ############ ID Result Tab: Applied ###################
-  idresultApp <- reactive({
+  idresultApp <- function(){
     an <- AnalysisSamplesApp()
     int <- interpretationApp()
     realid <- unique(as.numeric(as.character(an$Real_ID)))
     final <- as.data.frame(cbind(realid, int$Interpretation))
     colnames(final)<- c("ID", "Interpretation")
     return(final)
-    
-  })
+  }
   
   output$downidresapp <- downloadHandler(
     filename = "ID_result.csv",
@@ -1613,28 +1607,27 @@ server <- function(input, output) {
   ###################################################################################
   
   ################# Read CSVs: Taqman ############################
-  cyclesInput <- reactive({
+  cyclesInput <- function(){
     dat <- input$taqmancsv
     if (!is.null(dat)){
       tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=",", dec=".")
       tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
       return(tbl_list)
     }
-  })
+  }
   
   ################ Create gene list from input files ###############
-  geneList <- reactive({
+  geneList <- function(){
     dat <- input$taqmancsv
     lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
                                                    basename(dat$name)))
     lst <- unlist(lst)
     out <- unique(lst)
     return(out)
-  })
-  
+  }
   
   ################# Well ID Tab: Taqman ###################
-  taqwellID <- reactive({
+  taqwellID <- function(){
     raw <- input$taqwellid
     if (!is.null(raw)){
       data = read.csv(raw$datapath, sep = ';', header = TRUE, dec=',');
@@ -1644,7 +1637,7 @@ server <- function(input, output) {
     }else{
       return (NULL);
     }  
-  })
+  }
   ## b) Call function and display in app
   output$taqmanwell <- renderTable({
     newWell = taqwellID()
@@ -1656,14 +1649,14 @@ server <- function(input, output) {
   })
   
   ################# ID Result Tab: Taqman ###################
-  taqIDRes <- reactive({
+  taqIDRes <- function(){
     idres <- input$taqidres
     if (!is.null(idres)){
       data <- read.csv(idres$datapath, sep = ';', header = TRUE, dec=',');
       data <- data[,-3] 
       return(data)
     }
-  })
+  }
   
   ## Display table 
   output$taqmanidres <- renderTable({
@@ -1676,22 +1669,22 @@ server <- function(input, output) {
   })
   
   ############## Combine ID well and ID results ###################
-  combIDwellIDres <- reactive({
+  combIDwellIDres <- function(){
     wellid <- taqwellID()
     idres <- taqIDRes()
     info <-merge(idres,wellid,by="ID")
     info$Well2<-sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE)
     info<-as.data.frame(info)
     return(info)
-  })
+  }
   
   ########## C Tab: Taqman #################
-  constVarendoC <- reactive({
+  constVarendoC <- function(){
     info <- combIDwellIDres()
     C<-info[which(info$Target==input$endoC),] # select target
     C<-C[order(C$Well2),]
     return(C)
-  })
+  }
   
   output$c <- renderTable({
     constVarendoC()
@@ -1708,7 +1701,7 @@ server <- function(input, output) {
   })
   
   ########### Plot dimensions: Taqman ############
-  taqDim <- reactive({
+  taqDim <- function(){
     C <- constVarendoC()
     if (!is.null(input$dataendoC)){
       raw <- read.csv(input$dataendoC$datapath, header = TRUE, sep = ",", dec=".")
@@ -1722,7 +1715,7 @@ server <- function(input, output) {
       lr <- list(l,r)
       return(lr)
     }
-  })
+  }
   
   ################## General Plots Tab: Taqman ##################
   generalPlots <- function(){
@@ -1773,7 +1766,7 @@ server <- function(input, output) {
   )
   
   ############ Indetermined Plots: Taqman #################
-  indetPlots <- reactive({
+  indetPlots <- function(){
     info <- combIDwellIDres()
     lr <- taqDim()
     genes <- geneList()
@@ -1812,7 +1805,7 @@ server <- function(input, output) {
       defPltLs[[i]] <- pltList
     } 
     return(defPltLs)
-  })
+  }
   
   ## Render plots in app
   output$n1 <- renderPlot({
@@ -1861,32 +1854,641 @@ server <- function(input, output) {
     }
   )
   
-  
   ###################################### SYBR #####################################
   ###################################################################################
+  ######## Read "Run Information": SYBR ##########
+  readruninfoSYBR <- function(){
+    res <- input$sybr
+    runinfo <- read_xlsx(res$datapath, sheet = "Run Information")
+    df <- data.frame(runinfo)
+    return(runinfo)
+  }
+  
+  output$sybrruninfo <- renderTable({
+    readruninfoSYBR()
+  })
+  
+  ######### Read "Data": SYBR ##############
+  readDataSYBR <- function(){
+    res <- input$sybr
+    samples <- read_xlsx(res$datapath, sheet = "Data")
+    df <- data.frame(samples)
+    df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+    df <- as.data.frame(df)
+    colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+    return(df)
+  }
+  
+  output$sybrdata <- renderTable({
+    readDataSYBR()
+  })
+  
+  ######## Cq Plate Tab: SYBR ##############
+  cqPlateSYBR <- function(){
+    inp <- readDataSYBR()
+    dt <- data.frame(matrix(nrow = 16, ncol = 24))
+    s <- 1
+    e <- 24
+    for (i in 1:16){
+      dt[i,] <- inp$Cq[s:e]
+      s <- s + 24
+      e <- e + 24
+    }
+    dt <- dt %>% 
+      mutate_if(is.numeric, round, digits = 3)
+    return(dt)
+  }
+  
+  ## Convert to datatable to render nicely in shiny
+  printCqPlateSYBR <- function(){
+    dt <- cqPlateSYBR()
+    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1:6,
+        backgroundColor = "lightgreen"
+      ) %>%
+      formatStyle(
+        columns = 7:12,
+        backgroundColor = "pink"
+      ) %>%
+      formatStyle(
+        columns = 13:18,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 19:24,
+        backgroundColor = "lightblue"
+      )
+    return(f)
+  }
+  
+  #### Render Table in App ### 
+  output$cqplatesybr<- renderDataTable(
+    printCqPlateSYBR()
+  )
+  
+  #################### Sample Plate Tab: SYBR ############################
+  samplePlateSYBR <- function(){
+    inp <- readDataSYBR()
+    dt <- data.frame(matrix(nrow = 16, ncol = 24))
+    s <- 1
+    e <- 24
+    for (i in 1:16){
+      dt[i,] <- inp$Sample[s:e]
+      s <- s + 24
+      e <- e + 24
+    }
+    return(dt)
+  }
+  
+  ## Convert to datatable to render nicely in shiny ##
+  printSamplePlateSYBR <- function(){
+    dt <- samplePlateSYBR()
+    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1:6,
+        backgroundColor = "lightgreen"
+      ) %>%
+      formatStyle(
+        columns = 7:12,
+        backgroundColor = "pink"
+      ) %>%
+      formatStyle(
+        columns = 13:18,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 19:24,
+        backgroundColor = "lightblue"
+      )
+    return(f)
+  }
+  
+  ###### Render Table in App ######
+  output$sampleplatesybr<- renderDataTable(
+    printSamplePlateSYBR()
+  )
+  
+  #################### Check Sample Order Tab: SYBR #######################
+  checkSamplesSYBR <- function(){
+    s <- samplePlateSYBR()
+    
+    check1 <- rbind(s[1:14,][1:8])
+    colnames(check1) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
+    check2 <- rbind(s[1:14,][9:16])
+    colnames(check2) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
+    check3 <- rbind(s[1:14,][17:24])
+    colnames(check3) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
+    
+    all <- rbind(check1, check2, check3)
+    colnames(all) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
+    def <- all[complete.cases(all),]
+    
+    ## Add "coinciden" to script 
+    for (i in 1:nrow(def)){
+      if (def[i,"Duplicate_1.1"] == def[i, "Duplicate_1.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_2.1"] && def[i, "Duplicate_1.1"] == def[i, "Duplicate_2.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_3.1"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_3.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_4.1"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_4.2"]){
+        def$Check[i] <- "Coinciden"
+      } else {
+        def$Check[i] <- "No coinciden"
+      }
+    }
+    return(def)
+  }
+  
+  ## Convert to datatable to render nicely in shiny
+  checkSamplesSYBRDT <- function(){
+    def <- checkSamplesSYBR()
+    defdt <- datatable(def, rownames = F,  options = list(pageLength = 60))
+    f <- defdt %>% 
+      formatStyle(
+        columns = 1:2,
+        backgroundColor = "lightblue"
+      )%>%
+      formatStyle(
+        columns = 3:4,
+        backgroundColor = "pink"
+      ) %>%
+      formatStyle(
+        columns = 5:6,
+        backgroundColor = "orange"
+      ) %>%
+      formatStyle(
+        columns = 7:8,
+        backgroundColor = "seagreen"
+      ) %>%
+      formatStyle(
+        columns = 9,
+        backgroundColor = styleEqual(c("Coinciden", "No coinciden"), c('seagreen', 'tomato'))
+      )
+    return(f)
+  }
+  
+  ####### Render Table in App ####
+  output$samplechecksybr <- renderDataTable(
+    checkSamplesSYBRDT()
+  )
+  
+  
+  ################### Plate Setup MultiChanel: SYBR ########################
+  setupMultiCSYBR <- function(){
+    def <- checkSamplesSYBR()
+    col1 <- rep(paste("S",1:43, sep = ""),each=1)
+    col2 <- unique(def$Duplicate_1.1)
+    multic <- as.data.frame(cbind(col1, col2))
+    colnames(multic)<- c("Sample", "Real_ID")
+    print(multic)
+    return(multic)
+  }
+  
+  setupMultiCSYBRDT <- function(){
+    a <- setupMultiCSYBR()
+    defdt <- datatable(a, rownames = F, 
+                       options = list(pageLength = 50))
+    f <- defdt %>%
+      formatStyle(
+        columns = 1,
+        backgroundColor = "seagreen"
+      )%>%
+      formatStyle(
+        columns = 2,
+        backgroundColor = "lightgreen"
+      )
+    return(f)
+  }
+  
+  output$setupmulticsybr <- renderDataTable(
+    setupMultiCSYBRDT()
+  )
+  
+  ################### Standard Curve Tab (Table): SYBR #####################
+  stCurveSYBR <- function(){
+    a <- data.frame(matrix(0, nrow = 6, ncol = 24))
+    colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N_dup1","S_dup1","RdRP_dup1","RPP30_dup1","N_dup2","S_dup2","RdRP_dup2","RPP30_dup2","N_avg","S_avg","RdRP_avg","RPP30_avg","N_logcop","S_logcop","RdRP_logcop", "RPP30_logcop","N_copies", "S_copies", "RdRP_copies","RPP30_copies")
+    a$Sample <- c("NTC","C(-)","C(+)10-2", "C(+)10-3","C(+)10-4","C(+)10-5")
+    a$Dilution <- c("-","-",100,1000,10000,100000)
+    a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]),200000*2/as.numeric(a$Dilution[6]))
+    a$`log(copies)`<- c("-","-", 3.602, 2.602,1.602, 0.602)
+    
+    cq <- cqPlateSYBR()
+    
+    a$N_dup1 <- as.numeric(c(cq[8,6],cq[16,24],cq[16,6],cq[14,6], cq[12,6], cq[10,6]))
+    a$S_dup1 <- as.numeric(c(cq[8,12],cq[16,11],NA,NA,NA,NA))
+    a$RdRP_dup1 <- as.numeric(c(cq[8,18],cq[16,13],cq[16,18],cq[14,18],cq[12,18],cq[10,18]))
+    a$RPP30_dup1 <- as.numeric(c(cq[8,24],cq[16,15],NA,NA,NA,NA))
+    a$N_dup2 <- as.numeric(c(cq[7,6],cq[15,24],cq[15,6],cq[13,6], cq[11,6], cq[9,6]))
+    a$S_dup2 <- as.numeric(c(cq[7,12],cq[16,12],NA,NA,NA,NA))
+    a$RdRP_dup2 <- as.numeric(c(cq[7,18],cq[16,14],cq[15,18], cq[13,18], cq[11,18],cq[9,18]))
+    a$RPP30_dup2 <- as.numeric(c(cq[7,24],cq[16,16],NA,NA,NA,NA))
+    a$N_avg <- c(mean(c(a$N_dup1[1], a$N_dup2[1]), na.rm = T), mean(c(a$N_dup1[2], a$N_dup2[2]), na.rm = T), mean(c(a$N_dup1[3], a$N_dup2[3]), na.rm = T), mean(c(a$N_dup1[4], a$N_dup2[4]), na.rm = T), mean(c(a$N_dup1[5], a$N_dup2[5]), na.rm = T), mean(c(a$N_dup1[6], a$N_dup2[6]), na.rm = T))
+    a$S_avg <- c(mean(c(a$S_dup1[1], a$S_dup2[1]), na.rm = T), mean(c(a$S_dup1[2], a$S_dup2[2]), na.rm = T), NA, NA,NA,NA)
+    a$RdRP_avg <- c(mean(c(a$RdRP_dup1[1], a$RdRP_dup2[1]), na.rm = T), mean(c(a$RdRP_dup1[2], a$RdRP_dup2[2]), na.rm = T), mean(c(a$RdRP_dup1[3], a$RdRP_dup2[3]), na.rm = T), mean(c(a$RdRP_dup1[4], a$N_dup2[4]), na.rm = T), mean(c(a$RdRP_dup1[5], a$RdRP_dup2[5]), na.rm = T), mean(c(a$RdRP_dup1[6], a$RdRP_dup2[6]), na.rm = T))
+    a$RPP30_avg <- c(mean(c(a$RPP30_dup1[1], a$RPP30_dup2[1]), na.rm = T), mean(c(a$RPP30_dup1[2], a$RPP30_dup2[2]), na.rm = T), NA, NA,NA,NA)
+    
+    ################### Coefficients ####################
+    n <- a$N_avg[3:6]
+    s <- a$S_avg[3:6]
+    rdrp <- a$RdRP_avg[3:6]
+    rpp30 <- a$RPP30[3:6]
+    cp <- a$`log(copies)`[3:6]
+    p <- as.data.frame(cbind(as.numeric(n),as.numeric(s),as.numeric(rdrp),as.numeric(rpp30),as.numeric(cp)))
+    print(p)
+    colnames(p) <- c("N", "S","RdRP", "RPP30","cp")
+    
+    model_n <- lm(cp ~ n, p)
+    n_coeff1 <- as.numeric(model_n$coefficients[1])
+    n_coeff2 <- as.numeric(model_n$coefficients[2])
+    n_coeff <- as.data.frame(cbind(n_coeff1, n_coeff2))
+    colnames(n_coeff) <- c("Intercept", "Slope")
+    
+    model_rdrp <- lm(cp ~ rdrp, p)
+    rdrp_coeff1 <- as.numeric(model_rdrp$coefficients[1])
+    rdrp_coeff2 <- as.numeric(model_rdrp$coefficients[2])
+    rdrp_coeff <- as.data.frame(cbind(rdrp_coeff1, rdrp_coeff2))
+    colnames(rdrp_coeff) <- c("Intercept", "Slope")
+    
+    
+    coeff <- as.data.frame(rbind(n_coeff, rdrp_coeff))
+    rownames(coeff) <- c("N", "RdRP")
+    ###############################################################
+    ## log(Copies) ##
+    for (i in 1:length(a$N_avg)){
+      if(is.na(a$N_avg[i])== TRUE){
+        a$N_logcop[i] <- NA
+      }else{
+        a$N_logcop[i] <- a$N_avg[i]*coeff[1,2]+coeff[1,1]
+      }
+      if(is.na(a$RdRP_avg[i])== TRUE){
+        a$RdRP_logcop[i] <- NA
+      }else{
+        a$RdRP_logcop[i] <- a$RdRP_avg[i]*coeff[2,2]+coeff[2,1]
+      }
+      
+      a$S_logcop[i] <- NA
+      a$RPP30_logcop[i] <- NA
+    }
+    ## Copies ##
+    for (i in 1:length(a$N_logcop)){
+      if (is.na(a$N_logcop[i])){
+        a$N_copies[i] <- NA
+      }else{
+        a$N_copies[i] <-10^a$N_logcop[i]
+      }
+      if (is.na(a$RdRP_logcop[i])){
+        a$RdRP_copies[i] <- NA
+      }else{
+        a$RdRP_copies[i] <-10^a$RdRP_logcop[i]
+      }
+      a$S_copies[i] <- NA
+      a$RPP30_copies[i] <- NA
+    }
+    return(a)
+  }
+  
+  #### Convert to datatable ####
+  stCurveSYBRDT <- function(){
+    a <- stCurveSYBR()
+    ## Transform into data table
+    defdt <- datatable(a, rownames = F)
+    dt <- defdt %>%
+      formatStyle(
+        columns = c(5,9,13,17,21),
+        backgroundColor = "seagreen"
+      )%>%
+      formatStyle(
+        columns = c(6,10,14,18,22),
+        backgroundColor = "pink"
+      ) %>%
+      formatStyle(
+        columns = c(7,11,15,19,23),
+        backgroundColor = "lightblue"
+      ) %>%
+      formatStyle(
+        columns = c(8,12,16,20,24),
+        backgroundColor = "orange"
+      )
+    
+    return(dt)
+  }
+  
+  ##### Render Table ####
+  output$stdcurvesybr <- renderDataTable(
+    stCurveSYBRDT()
+  )
+  
+  ################### Standard Curve Tab (Plots): SYBR ###########################
+  stdPlotsSYBR <- function(){
+    a <- stCurveSYBR()
+    nn <- a$N_avg[3:6]
+    rdrpp <- a$RdRP_avg[3:6]
+    cpp <- a$`log(copies)`[3:6]
+    p <- as.data.frame(cbind(as.numeric(nn),as.numeric(rdrpp),as.numeric(cpp)))
+    colnames(p) <- c("n", "rdrp", "cp")
+    
+    form1 <- p$cp ~ p$n
+    
+    p1 <- ggplot(p, aes(x=n, y = cp)) + 
+      geom_point()+
+      geom_smooth(method = lm, se = F) +
+      stat_poly_eq(formula = form1,
+                   label.x.npc = "right", label.y.npc = "top",
+                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                   parse = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(p)[1])))+
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+      xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
+      ylab("log(Copies)")
+    
+    form2 <- p$cp ~ p$rdrp
+    
+    p2 <- ggplot(p, aes(x=rdrp, y = cp)) + 
+      geom_point()+
+      geom_smooth(method = lm, se = F) +
+      stat_poly_eq(formula = form2, 
+                   label.x.npc = "right", label.y.npc = "top",
+                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   parse = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(p)[2])))+
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+      xlab(paste("Dilutions",toupper(colnames(p)[2]))) +
+      ylab("log(Copies)")
+    
+    s <- grid.arrange(p1, p2, nrow = 1)
+    return(s)
+  }
+  
+  output$stdsybr <- renderPlot(
+    stdPlotsSYBR()
+  )
+  
+  #################### Analysis Samples Tab: SYBR ######################
+  AnalysisSamplesSYBR <- function(){
+    
+    ## Real Id, Sample, Replicate columns
+    a <- setupMultiCSYBR()
+    sample <- rep(paste("S",1:length(a$Real_ID), sep=""), each=1)
+    dup1 <- paste(sample,"-1", sep="")
+    dup2 <- paste(sample,"-2", sep="")
+    
+    cq <- cqPlateSYBR()
+    n <- as.numeric(stack(cq[,1:6])[,1])
+
+    odd<-seq(1,length(n)-1,2)
+    even<-seq(2,length(n),2)
+    
+    n_dup1 <- vector()
+    for (i in odd){
+      n_dup1 <- append(n_dup1,n[i])
+    }
+    n_dup2 <- vector()
+    for (i in even){
+      n_dup2 <- append(n_dup2, n[i])
+    }
+    
+    s <- as.numeric(stack(cq[,7:12])[,1])
+    s_dup1 <- vector()
+    for (i in odd){
+      s_dup1 <- append(s_dup1,s[i])
+    }
+    s_dup2 <- vector()
+    for (i in even){
+      s_dup2 <- append(s_dup2,s[i])
+    }
+    
+    rdrp <- as.numeric(stack(cq[,13:18])[,1])
+    rdrp_dup1 <- vector()
+    for (i in odd){
+      rdrp_dup1 <- append(rdrp_dup1,rdrp[i])
+    }
+    rdrp_dup2 <- vector()
+    for (i in even){
+      rdrp_dup2 <- append(rdrp_dup2,rdrp[i])
+    }
+    
+    rpp30 <- as.numeric(stack(cq[,19:24])[,1])
+    rpp30_dup1 <- vector()
+    for (i in odd){
+      rpp30_dup1 <- append(rpp30_dup1,rpp30[i])
+    }
+    rpp30_dup2 <- vector()
+    for (i in even){
+      rpp30_dup2 <- append(rpp30_dup2,rpp30[i])
+    }
+    
+    #### Controls ####
+    h1 <- vector()
+    h2 <- vector()
+    n1 <- vector()
+    n2 <- vector()
+    s1 <- vector()
+    s2 <- vector()
+    r1 <- vector()
+    r2 <- vector()
+    n1n2 <- vector()
+    s1s2 <- vector()
+    r1r2 <- vector()
+    spos <- vector()
+    npos <- vector()
+    rpos <- vector()
+    score <- vector()
+    assignment <- vector()
+    comments <- vector()
+    for (i in 1:nrow(a)){
+      #### h1 ####
+      if (is.na(rpp30_dup1[i]) == TRUE){
+        h1 <- append(h1, "OJO")
+      } else if (as.numeric(rpp30_dup1[i]) > 35){
+        h1 <- append(h1, "OJO")
+      } else {
+        h1 <- append(h1, "OK")
+      }
+      #### h2 ####
+      if (is.na(rpp30_dup2[i]) == TRUE){
+        h2 <- append(h2, "OJO")
+        }else if (as.numeric(rpp30_dup2[i]) > 35){
+          h2 <- append(h2, "OJO")
+        }else {
+          h2 <- append(h2, "OK")
+        }
+     
+      ### n1 ####
+      if (is.na(n_dup1[i]) == TRUE){
+        n1 <- append(n1, "null")
+      } else if (as.numeric(n_dup1[i]) == 0){
+        n1 <- append(n1, "neg")
+      } else if (as.numeric(n_dup1[i]) < 40){
+        n1 <- append(n1, "pos")
+      } else {
+        n1 <- append(n1, "neg")
+      }
+      
+      ## n2 ##
+      if (is.na(n_dup2[i]) == TRUE){
+        n2 <- append(n2, "null")
+      } else if (as.numeric(n_dup2[i]) == 0){
+        n2 <- append(n2, "neg")
+      } else if (as.numeric(n_dup2[i]) < 40){
+        n2 <- append(n2, "pos")
+      } else {
+        n2 <- append(n2, "neg")
+      }
+      
+      ## s1 ##
+      if (is.na(s_dup1[i]) == TRUE){
+        s1 <- append(s1, "null")
+      } else if (as.numeric(s_dup1[i]) == 0){
+        s1 <- append(s1, "neg")
+      } else if (as.numeric(s_dup1[i]) < 40){
+        s1 <- append(s1, "pos")
+      } else {
+        s1 <- append(s1, "neg")
+      }
+      
+      ## s2 ##
+      if (is.na(s_dup2[i]) == TRUE){
+        s2 <- append(s2, "null")
+      } else if (as.numeric(s_dup2[i]) == 0){
+        s2 <- append(s2, "neg")
+      } else if (as.numeric(s_dup2[i]) < 40){
+        s2 <- append(s2, "pos")
+      } else {
+        s2 <- append(s2, "neg")
+      }
+      
+      ## rdrp1 ##
+      if (is.na(rdrp_dup1[i]) == TRUE){
+        r1 <- append(r1, "null")
+      } else if (as.numeric(rdrp_dup1[i]) == 0){
+        r1 <- append(r1, "neg")
+      } else if (as.numeric(rdrp_dup1[i]) < 40){
+        r1 <- append(r1, "pos")
+      } else {
+        r1 <- append(r1, "neg")
+      }
+      
+      ## rdrp2 ##
+      if (is.na(rdrp_dup2[i]) == TRUE){
+        r2 <- append(r2, "null")
+      } else if (as.numeric(rdrp_dup2[i]) == 0){
+        r2 <- append(r2, "neg")
+      } else if (as.numeric(rdrp_dup2[i]) < 40){
+        r2 <- append(r2, "pos")
+      } else {
+        r2 <- append(r2, "neg")
+      }
+      
+      n1n2 <- append(n1n2, paste(n1[i],"N",n2[i], sep=""))
+      s1s2 <- append(s1s2, paste(s1[i],"S",s2[i], sep=""))
+      r1r2 <- append(r1r2, paste(r1[i],"R",r2[i], sep=""))
+      
+      ### spos ###
+      if (s1s2[i] == "negSneg"){
+        spos <- append(spos, 0)
+      }else if(s1s2[i] == "posSpos"){
+        spos <- append(spos, 1)
+      } else {
+        spos <- append(spos, 9)
+      }
+      
+      ### npos ###
+      if (n1n2[i] == "negNneg"){
+        npos <- append(npos, 0)
+      }else if(n1n2[i] == "posNpos"){
+        npos <- append(npos, 1)
+      } else {
+        npos <- append(npos, 9)
+      }
+      
+      ### npos ###
+      if (r1r2[i] == "negNneg"){
+        rpos <- append(rpos, 0)
+      }else if(r1r2[i] == "posNpos"){
+        rpos <- append(rpos, 1)
+      } else {
+        rpos <- append(rpos, 9)
+      }
+      
+      ### Score ###
+      score <- append(score, sum(npos[i],spos[i],rpos[i]))
+      
+      ### Assignment ###
+      if (is.na(a$Real_ID[i]) == TRUE){
+        assignment <- append(assignment, "")
+      } else if(h1[i] == "OJO"){
+        assignment <- append(assignment, "Null")
+      } else if(h2[i] == "OJO"){
+        assignment <- append(assignment, "Null")
+      } else if (as.numeric(score[i]) < 2){
+        assignment <- append(assignment, "Negative")
+      } else if (as.numeric(score[i]) < 4){
+        assignment <- append(assignment, "Positive")
+      } else if (as.numeric(score[i]) == 10){
+        assignment <- append(assignment, "Null")
+      } else if (as.numeric(score[i]) < 10){
+        assignment <- append(assignment, "Negative")
+      } else if (as.numeric(score[i]) < 12){
+        assignment <- append(assignment, "Positive")
+      } else {
+        assignment <- append(assignment, "Null")
+      }
+      
+      if (is.na(a$Real_ID[i]) == TRUE){
+        comments <- append(comments, "")
+      } else if (h1[i] == "OJO") {
+        comments <- append(comments, "Housekeeping failed")
+      } else if (h2[i] == "OJO") {
+        comments <- append(comments, "Housekeeping failed")
+      } else {
+        comments <- append(comments, "")
+      }
+      
+    }
+    
+    final <- cbind(a$Real_ID, sample, dup1, n_dup1, s_dup1, rdrp_dup1, rpp30_dup1, dup2, n_dup2, s_dup2, rdrp_dup2, rpp30_dup2,h1,h2,n1,n2,r1,r2, n1n2,s1s2,r1r2, npos, spos, rpos, score, assignment, comments)
+    colnames(final) <- c("Real_ID","Sample", "Duplicate1", "N_Ct_1", "S_Ct_1", "RdRP_Ct_1", "RPP30_Ct_1","Duplicate2","N_Ct_2", "S_Ct_2", "RdRP_Ct_2", "RPP30_Ct_2", "H1", "H2", "N1","N2","R1","R2", "N1N2", "S1S2", "R1R2", "Npos", "Spos", "Rpos", "Score", "Assignment", "Comments")
+    return(final)
+  }
+  
+  AnalysisSamplesSYBRDT <- function(){
+    df <- AnalysisSamplesSYBR()
+    defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
+    f <- defdt %>%
+      formatStyle(
+        columns = 1:2,
+        backgroundColor = "lemonchiffon"
+      )
+    return(f)
+  }
+  
+  output$analysissybr <- renderDataTable({
+    AnalysisSamplesSYBRDT()
+  })
+  
+  
   
   ####### Read CSVs with Tm: SYBR ######### 
-  TMinput <- reactive({
+  TMinput <- function(){
     dat <- input$sybrcsv
     if (!is.null(dat)){
       tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=";", dec=",")
       tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
       return(tbl_list)
     }
-  })
+  }
   
   ######## Gene List: SYBR ###########
-  SybrGeneList <- reactive({
+  SybrGeneList <- function(){
     dat <- input$sybrcsv
     lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
                                                    basename(dat$name)))
     lst <- unlist(lst)
     out <- unique(lst)
     return(out)
-  })
+  }
   
   ######## Well ID: SYBR ###########
-  wellID <- reactive({
+  wellID <- function(){
     raw <- input$wellid
     if (!is.null(raw)){
       data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
@@ -1896,7 +2498,8 @@ server <- function(input, output) {
     }else{
       return (NULL);
     }  
-  })
+  }
+  
   ## b) Call function and display in app
   output$well <- renderTable({
     newWell = wellID()
@@ -1921,7 +2524,7 @@ server <- function(input, output) {
   
   ## Misma función que matchTarget pero con un loop para guardar todos los archivos en la misma tabla
   ## Bastante guarro, pero funciona
-  matchAllTarget <- reactive({
+  matchAllTarget <- function(){
     Well <- wellID()
     genes <- SybrGeneList()
     melt_gene <- TMinput()
@@ -1934,14 +2537,14 @@ server <- function(input, output) {
       matchLs[[i]] <- fluos_gene
     }
     return(matchLs)
-  })
+  }
   
   output$fluosgene <- renderTable({
     matchAllTarget()
   })
   
   ############ Fluo Temp Tab: SYBR ###############
-  fluoTemp <- reactive({
+  fluoTemp <- function(){
     fluos_gene <- matchAllTarget()
     melt_gene <- TMinput()
     genes <- SybrGeneList()
@@ -1952,7 +2555,7 @@ server <- function(input, output) {
       LsforPlot[[i]] <- fluo_temp
     }
     return(LsforPlot)
-  })
+  }
   
   output$fluotemp <-renderTable({
     fluoTemp()
@@ -2049,7 +2652,7 @@ server <- function(input, output) {
   ################## TM Results: SYBR #######################
   ## 7) Load data and generate output table
   ## a) Generate table for all genes
-  TMTable <- reactive({
+  TMTable <- function(){
     #Combine all input genes
     melt_gene <- TMinput()
     fluos_gene <- matchAllTarget()
@@ -2087,7 +2690,7 @@ server <- function(input, output) {
     }
     results <- list.stack(results_all)
     return(results)
-  })
+  }
   
   ## b) Render table
   output$tmtable <-renderTable({

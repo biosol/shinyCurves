@@ -28,9 +28,16 @@ ui <- fluidPage(
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
-      checkboxInput("sybr", "3) Input + Analysis: SYBR Melting Curves"),
+      checkboxInput("inpsybr", "3a) Input: SYBR"),
       conditionalPanel(
-        condition = "input.sybr == true",
+        condition = "input.inpsybr == true",
+        fileInput("sybr",
+                  label = "Upload Excel here",
+                  multiple = FALSE),
+      ),
+      checkboxInput("meltsybr", "3b) Analysis: SYBR Melting Curves"),
+      conditionalPanel(
+        condition = "input.meltsybr == true",
         fileInput("sybrcsv",
                   label="Upload CSV here",
                   multiple = TRUE),
@@ -136,7 +143,22 @@ ui <- fluidPage(
       ),
       ###### 3) Main Panel for SYBR ########
       conditionalPanel(
-        condition = "input.sybr == true",
+        condition = "input.inpsybr == true",
+        tabsetPanel(
+          id = "inpsyb",
+          type = "tabs",
+          tabPanel("Run Information", tableOutput("sybrruninfo")),
+          tabPanel("Raw Data", tableOutput("sybrdata")),
+          tabPanel("Cq Plate", dataTableOutput("cqplatesybr")),
+          tabPanel("Sample Plate", dataTableOutput("sampleplatesybr")),
+          tabPanel("Check Sample Order", dataTableOutput("samplechecksybr")),
+          tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticsybr")),
+          tabPanel("Standard Curve", dataTableOutput("stdcurvesybr"),plotOutput("stdsybr")),
+          tabPanel("Analysis Samples", dataTableOutput("analysissybr"))
+        )
+      ),
+      conditionalPanel(
+        condition = "input.meltsybr == true",
         tabsetPanel(
           id = "syb",
           type = "tabs",
