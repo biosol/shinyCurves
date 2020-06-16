@@ -1,5 +1,5 @@
 ################################# SHINY APP FOR QPCR ANALYSIS ############################################
-########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################
+########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
 ui <- fluidPage(
   titlePanel(strong("qPCR Analysis")),
   sidebarLayout(
@@ -8,23 +8,25 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.taqexcel == true",
         fileInput("biorad", 
-                  label = "Upload BioRad CFX results file")
-        ),
-       checkboxInput("app",  "1b) Input: Taqman - Applied Quant Studio"),
-       conditionalPanel(
+                  label = "Upload BioRad CFX results file",
+                  multiple = TRUE)
+      ),
+      checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
+      conditionalPanel(
         condition = "input.app == true",
         fileInput("appl",
-                    label = "Upload Applied Quant Studio xlsx")
-        ),
-       checkboxInput("taqman", "2) Analysis: Taqman Cq Curves"),
-       conditionalPanel(
+                  label = "Upload Applied Quant Studio xlsx",
+                  multiple = TRUE)
+      ),
+      checkboxInput("taqman", "2) Analysis: Taqman Cq Curves"),
+      conditionalPanel(
         condition = "input.taqman == true",
         fileInput("taqmancsv",
                   label = "Upload CSVs here",
                   multiple = TRUE),
         numericInput("ct", "Enter Ct value", value = 40),
         textInput("endoC", "Enter endogenous control", value = "RNAseP"),
-        fileInput("dataendoC", "Enter qPCR results for endoC"),
+        #fileInput("dataendoC", "Enter qPCR results for endoC"),
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
@@ -32,8 +34,8 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.inpsybr == true",
         fileInput("sybr",
-                  label = "Upload Excel here",
-                  multiple = FALSE),
+                  label = "Upload Excel or CSVs here",
+                  multiple = TRUE),
       ),
       checkboxInput("meltsybr", "3b) Analysis: SYBR Melting Curves"),
       conditionalPanel(
@@ -49,8 +51,7 @@ ui <- fluidPage(
                   label="Upload ID_well.csv here")
       )
     ),
-    
-    mainPanel(
+      mainPanel(
       ###### 1a) Main Panel for Biorad Input ########
       conditionalPanel(
         condition = "input.taqexcel == true",
@@ -58,25 +59,18 @@ ui <- fluidPage(
           id = "taqex",
           type = "tabs",
           tabPanel("Empty Plate", dataTableOutput("plate")),
-          tabPanel("Input DF", tableOutput("inputdf")),
+          tabPanel("Raw Data", tableOutput("inputdf")),
           tabPanel("Run Information", tableOutput("BRruninfo")),
+          #tabPanel("New Data", tableOutput("newdatabiorad")),
           tabPanel("Cq Plate", dataTableOutput("cqplate")),
           tabPanel("Sample Plate", dataTableOutput("sampleplate")),
           tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
           tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
-          tabPanel("Standard Curve", 
-                   fluidRow(
-                     dataTableOutput("stdcurve"),
-                     plotOutput("std"))
-          ),
+          tabPanel("Standard Curve", fluidRow(dataTableOutput("stdcurve"), plotOutput("std"))),
           tabPanel("Analysis Samples", dataTableOutput("analysis")),
           tabPanel("Interpretation", dataTableOutput("interpret")),
-          tabPanel("ID_Well", 
-                   downloadButton("downIDWELL", "Download CSV"),
-                   tableOutput("IDWELL")),
-          tabPanel("ID_Result",
-                   downloadButton("downidres", "Download CSV"),
-                   tableOutput("IDRESULT"))
+          tabPanel("ID_Well", downloadButton("downIDWELL", "Download CSV"), tableOutput("IDWELL")),
+          tabPanel("ID_Result",downloadButton("downidres", "Download CSV"), tableOutput("IDRESULT"))
         )
       ),
       ###### 1b) Main Panel for Applied Input ########
@@ -86,16 +80,14 @@ ui <- fluidPage(
           id = "blabla",
           type = "tabs",
           tabPanel("Raw Data", tableOutput("readapp")),
-          tabPanel("Transposed", tableOutput("trans")),
-          tabPanel("N1",
-                   downloadButton("downtransN1", "Download CSV"),
-                   tableOutput("transN1"),),
-          tabPanel("N2",
-                   downloadButton("downtransN2", "Download CSV"),
-                   tableOutput("transN2")),
-          tabPanel("RNAseP",
-                   downloadButton("downtransRNAseP", "Download CSV"),
-                   tableOutput("transRNAsep")),
+          tabPanel("Conversion",
+                   tabsetPanel(
+                     tabPanel("Tranposed", tableOutput("trans")),
+                     tabPanel(title=uiOutput("gen1app"), downloadButton("downtransgen1", "Download CSV"), tableOutput("transgen1")),
+                     tabPanel(title=uiOutput("gen2app"), downloadButton("downtransgen2", "Download CSV"), tableOutput("transgen2")),
+                     tabPanel(title=uiOutput("gen3app"), downloadButton("downtransgen3", "Download CSV"), tableOutput("transgen3"))
+                   )
+          ),
           tabPanel("Run Info", tableOutput("appliedruninfo")),
           tabPanel("Applied Results", tableOutput("appliedres")),
           tabPanel("Cq Plate", dataTableOutput("cqplateapp")),
@@ -119,24 +111,12 @@ ui <- fluidPage(
           tabPanel("ID_Result", tableOutput("taqmanidres")),
           tabPanel("C", tableOutput("c")),
           tabPanel("Info", tableOutput("info")),
-          tabPanel("General Plots",
-                   downloadButton("downgen", "Download PDF"),
-                   plotOutput("genplots", height = "1000px")
-          ),
+          tabPanel("General Plots", downloadButton("downgen", "Download PDF"), plotOutput("genplots", height = "1000px")),
           tabPanel("Indet Plots", 
                    tabsetPanel(
-                     tabPanel("N1",
-                              fluidRow(downloadButton("downln1", "Download PDF"),
-                                       plotOutput("n1", height = "500px"))
-                     ),
-                     tabPanel("N2",
-                              fluidRow(downloadButton("downln2", "Download PDF"),
-                                       plotOutput("n2", height = "500px"))
-                     ),
-                     tabPanel("RNAseP",
-                              fluidRow(downloadButton("downrnasep", "Download PDF"),
-                                       plotOutput("rnasep", height = "500px"))
-                     )
+                     tabPanel(title=uiOutput("gen1"),fluidRow(downloadButton("downlgen1", "Download PDF"), plotOutput("indetgen1", height = "500px"))),
+                     tabPanel(title=uiOutput("gen2"), fluidRow(downloadButton("downlgen2", "Download PDF"), plotOutput("indetgen2", height = "500px"))),
+                     tabPanel(title=uiOutput("gen3"), fluidRow(downloadButton("downlgen3", "Download PDF"), plotOutput("indetgen3", height = "500px")))
                    )
           )
         )
@@ -149,12 +129,15 @@ ui <- fluidPage(
           type = "tabs",
           tabPanel("Run Information", tableOutput("sybrruninfo")),
           tabPanel("Raw Data", tableOutput("sybrdata")),
+          tabPanel("New Data", tableOutput("newdatasybr")),
           tabPanel("Cq Plate", dataTableOutput("cqplatesybr")),
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybr")),
           tabPanel("Check Sample Order", dataTableOutput("samplechecksybr")),
           tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticsybr")),
           tabPanel("Standard Curve", dataTableOutput("stdcurvesybr"),plotOutput("stdsybr")),
-          tabPanel("Analysis Samples", dataTableOutput("analysissybr"))
+          tabPanel("Analysis Samples", dataTableOutput("analysissybr")),
+          tabPanel("ID_Well", downloadButton("downIDWELLsybr", "Download CSV"), tableOutput("IDWELLsybr")),
+          tabPanel("ID_Result", downloadButton("downIDRESsybr", "Download CSV"), tableOutput("IDRESsybr"))
         )
       ),
       conditionalPanel(
@@ -167,29 +150,17 @@ ui <- fluidPage(
           tabPanel("Fluo_Temp", tableOutput("fluotemp")),
           tabPanel("TM Plots", 
                    tabsetPanel(
-                       tabPanel("N",
-                              fluidRow(downloadButton("downsybrN", "Download PDF"),
-                                       plotOutput("sybrN", height = "1000px"))
-                       ),
-                       tabPanel("Rdrp",
-                              fluidRow(downloadButton("downsybrRdrp", "Download PDF"),
-                                       plotOutput("sybrRdrp", height = "1000px"))
-                      ),
-                      tabPanel("Rpp30",
-                              fluidRow(downloadButton("downsybrRpp30", "Download PDF"),
-                                       plotOutput("sybrRpp30", height = "1000px"))
-                      ),
-                      tabPanel("S",
-                             fluidRow(downloadButton("downsybrS", "Download PDF"),
-                                      plotOutput("sybrS", height = "1000px"))
-                      )
-                  )), 
-          tabPanel("TM Table",
-                   downloadButton("downloadtable", "Download CSV"),
-                   actionButton("send2drive", "Send to Google Drive", icon = icon("google-drive", lib="font-awesome")),
+                       tabPanel("N", fluidRow(downloadButton("downsybrN", "Download PDF"), plotOutput("sybrN", height = "1000px"))),
+                       tabPanel("Rdrp",fluidRow(downloadButton("downsybrRdrp", "Download PDF"), plotOutput("sybrRdrp", height = "1000px"))),
+                       tabPanel("Rpp30", fluidRow(downloadButton("downsybrRpp30", "Download PDF"), plotOutput("sybrRpp30", height = "1000px"))),
+                       tabPanel("S", fluidRow(downloadButton("downsybrS", "Download PDF"), plotOutput("sybrS", height = "1000px")))
+                   ),
+          ),
+          tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), actionButton("send2drive", "Send to Google Drive", icon = icon("google-drive", lib="font-awesome")),
                    tableOutput("tmtable")
           )
-        ))
+        )
+      )
     )
   )
 )

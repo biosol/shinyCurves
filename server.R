@@ -1,9 +1,13 @@
+################################# SHINY APP FOR QPCR ANALYSIS ############################################
+########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
+
 server <- function(input, output) {
   
-  ############################ BIORAD ##############################
-  ########################################################################
+  ################## BIORAD ##################
+  ############################################
   
-  ############### Empty Plate Tab: Biorad #####################
+  
+  ################## Empty Plate Tab: Biorad #####################
   platesTable <- function(cnames, controls){
     col1 <- rep(1:8, each=2)
     col2 <- rep(9:16, each=2)
@@ -12,7 +16,7 @@ server <- function(input, output) {
     col5 <- rep(33:40, each=2)
     col6 <- rep(41:48, each=2)
     col7 <- rep(49:56, each=2)
-    col8 <- c(rep(57:60, each=2),controls)
+    col8 <- c(rep(57:59, each=2),controls)
     
     df <- cbind(col1,col2,col3,col4,col5,col6,col7, col8)
     rownames(df) <- LETTERS[1:16]
@@ -21,9 +25,9 @@ server <- function(input, output) {
   }
   
   platePrint <- function(){
-    p1 <- platesTable(1:8, c("NTC","NTC","EXP-5","EXP-5","EXP-4","EXP-4", "EXP-2","EXP-2"))
-    p2 <- platesTable(9:16, c("NTC","NTC","EXP-5","EXP-5","EXP-4","EXP-4", "EXP-2","EXP-2"))
-    p3 <- platesTable(17:24, c("NTC","NTC"," "," "," "," ", "HeLa","HeLa"))
+    p1 <- platesTable(1:8, c("H2O","H2O","EXP-5","EXP-5","EXP-4","EXP-4","EXP-3","EXP-3","EXP-2","EXP-2"))
+    p2 <- platesTable(9:16, c("H2O","H2O","EXP-5","EXP-5","EXP-4","EXP-4", "EXP-3","EXP-3","EXP-2","EXP-2"))
+    p3 <- platesTable(17:24, c("H2O","H2O"," "," "," "," "," "," ", "HeLa","HeLa"))
     
     def <- cbind(p1,p2,p3)
     defdt <- datatable(def, options = list(pageLength = 20))
@@ -46,69 +50,91 @@ server <- function(input, output) {
     platePrint()
   )
   
-  ###################### Read "Run Information" Sheet: Biorad ##########################
-  bioradruninfo <- function(){
+  ################## Read "Run Information" and "Data" Sheet: Biorad ##########################
+  # This function allows the user to upload either 1 Excel with 2 sheets (Data and Run Information)
+  # or to upload 2 independent CSVs with the Run Information and Quantification Summary (with Sample,
+  # Fluor, Target, Cq, etc columns)
+  readBiorad <- function(){
     res <- input$biorad
-    runinfo <- read_xlsx(res$datapath, sheet = "Run Information")
-    df <- data.frame(runinfo)
-    return(runinfo)
-  }
-  
-  output$BRruninfo <- renderTable({
-    bioradruninfo()
-  })
-  
-  ##################### Read "Data" Sheet: Biorad ########################################
-  bioradsample <- function(){
-    res <- input$biorad
-    samples <- read_xlsx(res$datapath, sheet = "Data")
-    df <- data.frame(samples)
-    return(df)
-  }
-  
-  ##################### Input DF Tab: Biorad  #########################################
-  inputDF <- function(){
-    well <- list()
-    counter <- 0
-    for (let in LETTERS[1:16]){
-      for (nb in 1:24){
-        counter = counter +1
-        i <- paste(let,nb,sep="")
-        well[[counter]] <- i
-      }
+    tbl_list <- list()
+    ## Read data from CSVs
+    if (grepl("csv",res$datapath[1]) == TRUE){
+      tbl_list <- lapply(res$datapath, read.csv)
+      tmp <- as.data.frame(tbl_list[1]) %>%
+        select(Well, Fluor, Target, Content,Sample, Cq)
+      colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+      tbl_list[[1]] <- tmp
+      
+      ## Read Data from 1 Excel
+      } else if (grepl("xlsx", res$datapath[1]) == TRUE){
+      dat <- read_xlsx(res$datapath, sheet = "Data")
+      df <- as.data.frame(dat)
+      df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+      df <- as.data.frame(df)
+      colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+      
+      ## Read Run Information
+      run <- read_xlsx(res$datapath, sheet = "Run Information")
+      df2 <- as.data.frame(run)
+      
+      ## Append to list
+      tbl_list[[1]] <- df
+      tbl_list[[2]] <- df2
     }
-    
-    ## FLuor column ##
-    welldf <- data.table(well)
-    welldf$fluor <- 'FAM'
-    
-    ## Target column ###
-    n1 <- rep("N1", each=8)
-    n2 <- rep("N2", each=8)
-    rnasep <- rep("RNAseP", each=8)
-    all <- list(n1,n2,rnasep)
-    d <- do.call(rbind, Map(data.frame, Target=all))
-    welldf$Target <- rep(d$Target, len=384)
-    
-    ## Content column ###
-    welldf$Content <- 'Unknown'
-    
-    ## Sample column ###
-    bio <- bioradsample()
-    welldf$Sample <- bio$Sample
-    welldf$Cq <- bio$Cq
-    
-    # Return data table
-    return(welldf)
+    return(tbl_list)
   }
   
-  output$inputdf <- renderTable(
-    inputDF()
+  output$BRruninfo <- renderTable(
+    readBiorad()[[2]]
   )
   
-  ###################### Cq Plate Tab: Biorad ######################
+  output$inputdf <- renderTable(
+    readBiorad()[[1]]
+  )
+  
+  ################## New_Cq Tab: Biorad ##################
+  newDataBiorad <- function(){
+    inp <- readBiorad()[[1]]
+    dat <- inp
+    dat$Sample <- as.character(dat$Sample)
+    for (i in 1:length(dat$Sample)){
+      ## Interm column
+      if (grepl("o", dat$Sample[i]) == TRUE){
+        dat$interm <- dat$Sample[i]
+      } else{
+        dat$interm <- ""
+      }
+      ## NewSample column
+      if (dat$Sample[i] == dat$interm[i]){
+        dat$news <- ""
+      } else {
+        dat$news <- dat$Sample[i]
+      }
+      ## Formula column
+      form <- rep(c(0,16,32,48,64,80,96,112), times = length(dat$Sample)/8)
+      dat$Formula <- as.character(form)
+      ## NewCq column
+      if (dat$Cq[i] == "Undetermined"){
+        dat$newcq[i] <- as.character(0)
+      } else if (is.na(dat$Cq[i]) == TRUE){
+        dat$newcq[i] <- as.character(0)
+      } else if (dat$Cq[i] == ""){
+        dat$newcq[i] <- as.character(0)
+      } else {
+        dat$newcq[i] <- dat$Cq[i]
+      }
+    }
+    return(dat)
+  }
+  
+  output$newdatabiorad <- renderTable({
+    newDataBiorad()
+  })
+  
+  ################## Cq Plate Tab: Biorad ######################
   cqPlate <- function(){
-    inp <- inputDF()
+    #inp <- inputDF()
+    inp <- readBiorad()[[1]]
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
     e <- 24
@@ -146,14 +172,15 @@ server <- function(input, output) {
     printCqPlate()
   )
   
-  #################### Sample Plate Tab: Biorad ############################
+  ################## Sample Plate Tab: Biorad ############################
   samplePlate <- function(){
-    inp <- inputDF()
+    #inp <- inputDF()
+    inp <- readBiorad()[[1]]
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
     e <- 24
     for (i in 1:16){
-      dt[i,] <- inp$Sample[s:e]
+      dt[i,] <- inp$ID[s:e]
       s <- s + 24
       e <- e + 24
     }
@@ -179,17 +206,17 @@ server <- function(input, output) {
     return(f)
   }
   
-  ###### Render Table in App ######
+  ###### Render Table in App
   output$sampleplate<- renderDataTable(
     printSamplePlate()
   )
   
-  ################### Plate Setup MultiChanel: Biorad ########################
+  ################## Plate Setup MultiChanel: Biorad ########################
   setupMultiC <- function(){
     def <- checkSamples()
-    col1 <- rep(paste("S",1:60, sep = ""),each =2)
+    col1 <- rep(paste("S",1:59, sep = ""),each =2)
     col2 <- rep(paste(col1, "-", 1:2, sep=""))
-    col3 <- unique(def$first)
+    col3 <- def[1:118,"first"]
     multic <- as.data.frame(cbind(col1, col2, col3))
     colnames(multic)<- c("Sample", "Replicate", "Real_ID")
     return(multic)
@@ -215,7 +242,7 @@ server <- function(input, output) {
     setupMultiCDT()
   )
   
-  #################### Check Sample Order Tab: Biorad #######################
+  ################## Check Sample Order Tab: Biorad #######################
   checkSamples <- function(){
     s <- samplePlate()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
@@ -234,6 +261,7 @@ server <- function(input, output) {
         def$Check[i] <- "No coinciden"
       }
     }
+    def <- head(def,59*2)
     return(def)
   }
   
@@ -261,95 +289,95 @@ server <- function(input, output) {
     return(f)
   }
   
-  ####### Render Table in App ####
+  ####### Render Table in App
   output$samplecheck <- renderDataTable(
     checkSamplesDT()
   )
   
-  ################### Standard Curve Tab (Table): Biorad #######################
+  ################## Standard Curve Tab (Table): Biorad #######################
   stCurve <- function(){
-    a <- data.frame(matrix(0, nrow = 5, ncol = 19))
-    colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
-    a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-4","C(+)10-5")
-    a$Dilution <- c("-","-",100,1000,100000)
-    a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]))
-    a$`log(copies)`<- c("-","-", 3.602, 1.602, 0.602)
+    a <- data.frame(matrix(0, nrow = 6, ncol = 19))
+    colnames(a)<-c("Sample","Dilution","Copies","log(copies)","gen1_dup1","gen2_dup1","gen3_dup1","gen1_dup2","gen2_dup2","gen3_dup2","gen1_avg","gen2_avg","gen3_avg","gen1_logcop","gen2_logcop","gen3_logcop", "gen1_copies", "gen2_copies", "gen3_copies")
+    a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-3","C(+)10-4","C(+)10-5")
+    a$Dilution <- c("-","-",100,1000,10000,100000)
+    a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]),200000*2/as.numeric(a$Dilution[6]))
+    a$`log(copies)`<- c("-","-", 3.602, 2.602,1.602, 0.602)
     
     cq <- cqPlate()
-    a$N1_dup1 <- as.numeric(c(cq[9,8],NA,cq[15,8],cq[13,8], cq[11,8]))
-    a$N2_dup1 <- as.numeric(c(cq[9,16],NA,cq[15,16],cq[13,16], cq[11,16]))
-    a$RNAseP_dup1 <- as.numeric(c(cq[9,24],cq[15,24],NA,NA,NA))
-    a$N1_dup2 <- as.numeric(c(cq[10,8],NA,cq[16,8],cq[14,8], cq[12,8]))
-    a$N2_dup2 <- as.numeric(c(cq[10,16],NA,cq[16,16],cq[14,16], cq[12,16]))
-    a$RNAseP_dup2 <- as.numeric(c(cq[10,24],cq[16,24],NA,NA,NA))
-    a$N1_avg <- c(NA,NA,mean(c(a$N1_dup1[3], a$N1_dup2[3]), na.rm = T), mean(c(a$N1_dup1[4], a$N1_dup2[4]), na.rm = T), mean(c(a$N1_dup1[5], a$N1_dup2[5]), na.rm = T))
-    a$N2_avg <- c(NA,NA,mean(c(a$N2_dup1[3], a$N2_dup2[3]), na.rm = T), mean(c(a$N2_dup1[4], a$N2_dup2[4]), na.rm = T), mean(c(a$N2_dup1[5], a$N2_dup2[5]), na.rm = T))
-    a$RNAseP_avg <- c(NA,mean(c(a$RNAseP_dup1[2], a$RNAseP_dup2[2]), na.rm = T),mean(c(a$RNAseP_dup1[3], a$RNAseP_dup2[3]), na.rm = T), mean(c(a$RNAseP_dup1[4], a$RNAseP_dup2[4]), na.rm = T), mean(c(a$RNAseP_dup1[5], a$RNAseP_dup2[5]), na.rm =T))
+    a$gen1_dup1 <- as.numeric(c(cq[7,8],NA,cq[15,8],cq[13,8], cq[11,8], cq[9,8]))
+    a$gen2_dup1 <- as.numeric(c(cq[7,16],NA,cq[15,16],cq[13,16], cq[11,16], cq[9,16]))
+    a$gen3_dup1 <- as.numeric(c(cq[9,24],cq[15,24],NA,NA,NA,NA))
+    a$gen1_dup2 <- as.numeric(c(cq[8,8],NA,cq[16,8],cq[14,8], cq[12,8], cq[10,8]))
+    a$gen2_dup2 <- as.numeric(c(cq[8,16],NA,cq[16,16],cq[14,16], cq[12,16], cq[10,16]))
+    a$gen3_dup2 <- as.numeric(c(cq[10,24],cq[16,24],NA,NA,NA, NA))
+    a$gen1_avg <- c(NA,NA,mean(c(a$gen1_dup1[3], a$gen1_dup2[3]), na.rm = T), mean(c(a$gen1_dup1[4], a$gen1_dup2[4]), na.rm = T), mean(c(a$gen1_dup1[5], a$gen1_dup2[5]), na.rm = T), mean(c(a$gen1_dup1[6], a$gen1_dup2[6]), na.rm = T))
+    a$gen2_avg <- c(NA,NA,mean(c(a$gen2_dup1[3], a$gen2_dup2[3]), na.rm = T), mean(c(a$gen2_dup1[4], a$gen2_dup2[4]), na.rm = T), mean(c(a$gen2_dup1[5], a$gen2_dup2[5]), na.rm = T),mean(c(a$gen2_dup1[6], a$gen2_dup2[6]), na.rm = T))
+    a$gen3_avg <- c(mean(c(a$gen3_dup1[1], a$gen3_dup2[1]), na.rm = T),mean(c(a$gen3_dup1[2], a$gen3_dup2[2]), na.rm = T),NA,NA,NA,NA)
     
     ################### Coefficients ####################
-    n1 <- a$N1_avg[3:5]
-    n2 <- a$N2_avg[3:5]
-    cp <- a$`log(copies)`[3:5]
-    p <- as.data.frame(cbind(as.numeric(n1),as.numeric(n2) , as.numeric(cp)))
-    colnames(p) <- c("n1", "n2", "cp")
+    gen1 <- a$gen1_avg[3:6]
+    gen2 <- a$gen2_avg[3:6]
+    cp <- a$`log(copies)`[3:6]
+    p <- as.data.frame(cbind(as.numeric(gen1),as.numeric(gen2) , as.numeric(cp)))
+    colnames(p) <- c("gen1", "gen2", "cp")
     
-    model_n1 <- lm(cp ~ n1, p)
-    n1_coeff1 <- as.numeric(model_n1$coefficients[1])
-    n1_coeff2 <- as.numeric(model_n1$coefficients[2])
-    n1_coeff <- as.data.frame(cbind(n1_coeff1, n1_coeff2))
-    colnames(n1_coeff) <- c("Intercept", "Slope")
+    model_gen1 <- lm(cp ~ gen1, p)
+    gen1_coeff1 <- as.numeric(model_gen1$coefficients[1])
+    gen1_coeff2 <- as.numeric(model_gen1$coefficients[2])
+    gen1_coeff <- as.data.frame(cbind(gen1_coeff1, gen1_coeff2))
+    colnames(gen1_coeff) <- c("Intercept", "Slope")
     
-    model_n2 <- lm(cp ~ n2, p)
-    n2_coeff1 <- as.numeric(model_n2$coefficients[1])
-    n2_coeff2 <- as.numeric(model_n2$coefficients[2])
-    n2_coeff <- as.data.frame(cbind(n2_coeff1, n2_coeff2))
-    colnames(n2_coeff) <- c("Intercept", "Slope")
+    model_gen2 <- lm(cp ~ gen2, p)
+    gen2_coeff1 <- as.numeric(model_gen2$coefficients[1])
+    gen2_coeff2 <- as.numeric(model_gen2$coefficients[2])
+    gen2_coeff <- as.data.frame(cbind(gen2_coeff1, gen2_coeff2))
+    colnames(gen2_coeff) <- c("Intercept", "Slope")
     
-    coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
-    rownames(coeff) <- c("N1", "N2")
+    coeff <- as.data.frame(rbind(gen1_coeff, gen2_coeff))
+    rownames(coeff) <- c("gen1", "gen2")
     ###############################################################
     
     ## log(Copies) ##
-    for (i in 1:length(a$N1_avg)){
-      if(is.na(a$N1_avg[i])== TRUE){
-        a$N1_logcop[i] <- NA
+    for (i in 1:length(a$gen1_avg)){
+      if(is.na(a$gen1_avg[i])== TRUE){
+        a$gen1_logcop[i] <- NA
       }else{
-        a$N1_logcop[i] <- a$N1_avg[i]*coeff[1,2]+coeff[1,1]
+        a$gen1_logcop[i] <- a$gen1_avg[i]*coeff[1,2]+coeff[1,1]
       }
-      if(is.na(a$N2_avg[i])== TRUE){
-        a$N2_logcop[i] <- NA
+      if(is.na(a$gen2_avg[i])== TRUE){
+        a$gen2_logcop[i] <- NA
       }else{
-        a$N2_logcop[i] <- a$N2_avg[i]*coeff[2,2]+coeff[2,1]
+        a$gen2_logcop[i] <- a$gen2_avg[i]*coeff[2,2]+coeff[2,1]
       }
-      if(is.na(a$RNAseP_avg[i])== TRUE){
-        a$RNAseP_logcop[i] <- NA
+      if(is.na(a$gen3_avg[i])== TRUE){
+        a$gen3_logcop[i] <- NA
       }else{
-        a$RNAseP_logcop[i] <- a$RNAseP_avg[i]*coeff[2,2]+coeff[2,1]
+        a$gen3_logcop[i] <- a$gen3_avg[i]*coeff[2,2]+coeff[2,1]
       }
     }
     
     ##### Copies #####
-    for (i in 1:length(a$N1_logcop)){
-      if (is.na(a$N1_logcop[i])){
-        a$N1_copies[i] <- NA
+    for (i in 1:length(a$gen1_logcop)){
+      if (is.na(a$gen1_logcop[i])){
+        a$gen1_copies[i] <- NA
       }else{
-        a$N1_copies[i] <-10^a$N1_logcop[i]
+        a$gen1_copies[i] <-10^a$gen1_logcop[i]
       }
-      if (is.na(a$N2_logcop[i])){
-        a$N2_copies[i] <- NA
+      if (is.na(a$gen2_logcop[i])){
+        a$gen2_copies[i] <- NA
       }else{
-        a$N2_copies[i] <-10^a$N2_logcop[i]
+        a$gen2_copies[i] <-10^a$gen2_logcop[i]
       }
-      if (is.na(a$RNAseP_logcop[i])){
-        a$RNAseP_copies[i] <- NA
+      if (is.na(a$gen3_logcop[i])){
+        a$gen3_copies[i] <- NA
       }else{
-        a$RNAseP_copies[i] <-10^a$RNAseP_logcop[i]
+        a$gen3_copies[i] <-10^a$gen3_logcop[i]
       }
     }
     return(a)
   }
   
-  #### Convert to datatable ####
+  #### Convert to datatable
   stCurveDT <- function(){
     a <- stCurve()
     ## Transform into data table
@@ -371,73 +399,79 @@ server <- function(input, output) {
     return(dt)
   }
   
-  ##### Render Table ####
+  ##### Render Table
   output$stdcurve <- renderDataTable(
     stCurveDT()
   )
   
-  ####### Coefficients function (reubicar??) ########
+  ####### Coefficients function ########
   stdCoeffs <- function(){
     a <- stCurve()
-    n1 <- a$N1_avg[3:5]
-    n2 <- a$N2_avg[3:5]
-    cp <- a$`log(copies)`[3:5]
-    p <- as.data.frame(cbind(as.numeric(n1),as.numeric(n2) , as.numeric(cp)))
-    colnames(p) <- c("n1", "n2", "cp")
+    gen1 <- a$gen1_avg[3:6]
+    gen2 <- a$gen2_avg[3:6]
+    cp <- a$`log(copies)`[3:6]
+    p <- as.data.frame(cbind(as.numeric(gen1),as.numeric(gen2) , as.numeric(cp)))
+    colnames(p) <- c("gen1", "gen2", "cp")
     
-    model_n1 <- lm(cp ~ n1, p)
-    n1_coeff1 <- as.numeric(model_n1$coefficients[1])
-    n1_coeff2 <- as.numeric(model_n1$coefficients[2])
-    n1_coeff <- as.data.frame(cbind(n1_coeff1, n1_coeff2))
-    colnames(n1_coeff) <- c("Intercept", "Slope")
+    model_gen1 <- lm(cp ~ gen1, p)
+    gen1_coeff1 <- as.numeric(model_gen1$coefficients[1])
+    gen1_coeff2 <- as.numeric(model_gen1$coefficients[2])
+    gen1_coeff <- as.data.frame(cbind(gen1_coeff1, gen1_coeff2))
+    colnames(gen1_coeff) <- c("Intercept", "Slope")
     
-    model_n2 <- lm(cp ~ n2, p)
-    n2_coeff1 <- as.numeric(model_n2$coefficients[1])
-    n2_coeff2 <- as.numeric(model_n2$coefficients[2])
-    n2_coeff <- as.data.frame(cbind(n2_coeff1, n2_coeff2))
-    colnames(n2_coeff) <- c("Intercept", "Slope")
+    model_gen2 <- lm(cp ~ gen2, p)
+    gen2_coeff1 <- as.numeric(model_gen2$coefficients[1])
+    gen2_coeff2 <- as.numeric(model_gen2$coefficients[2])
+    gen2_coeff <- as.data.frame(cbind(gen2_coeff1, gen2_coeff2))
+    colnames(gen2_coeff) <- c("Intercept", "Slope")
     
-    coeff <- as.data.frame(rbind(n1_coeff, n2_coeff))
-    rownames(coeff) <- c("N1", "N2")
+    coeff <- as.data.frame(rbind(gen1_coeff, gen2_coeff))
+    rownames(coeff) <- c("gen1", "gen2")
     return(coeff)
   }
   
-  ################### Standard Curve Tab (Plots): Biorad ##########################
+  ################## Standard Curve Tab (Plots): Biorad ##########################
   stdPlots <- function(){
     a <- stCurve()
     
-    n11 <- a$N1_avg[3:5]
-    n22 <- a$N2_avg[3:5]
-    cpp <- a$`log(copies)`[3:5]
-    p <- as.data.frame(cbind(as.numeric(n11),as.numeric(n22),as.numeric(cpp)))
-    colnames(p) <- c("n1", "n2", "cp")
+    gen11 <- a$gen1_avg[3:6]
+    gen22 <- a$gen2_avg[3:6]
+    cpp <- a$`log(copies)`[3:6]
     
-    form1 <- p$cp ~ p$n1
+    pl1 <- as.data.frame(cbind(as.numeric(gen11),as.numeric(cpp)))
+    colnames(pl1) <- c("gen1", "cp")
+    pl1 <- pl1[complete.cases(pl1),]
     
-    p1 <- ggplot(p, aes(x=n1, y = cp)) + 
+    pl2 <- as.data.frame(cbind(as.numeric(gen22),as.numeric(cpp)))
+    colnames(pl2) <- c("gen2", "cp")
+    pl2 <- pl2[complete.cases(pl2),]
+    
+    form1 <- pl1$cp ~ pl1$gen1
+    
+    p1 <- ggplot(pl1, aes(x=gen1, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form1,
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                    parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[1])))+
+      ggtitle(paste("Standard curve for",toupper(colnames(pl1)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl1)[1]))) +
       ylab("log(Copies)")
     
-    form2 <- p$cp ~ p$n2
+    form2 <- pl2$cp ~ pl2$gen2
     
-    p2 <- ggplot(p, aes(x=n2, y = cp)) + 
+    p2 <- ggplot(pl2, aes(x=gen2, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form2, 
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
                    parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[2])))+
+      ggtitle(paste("Standard curve for",toupper(colnames(pl2)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[2]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl2)[1]))) +
       ylab("log(Copies)")
     
     s <- grid.arrange(p1, p2, nrow = 1)
@@ -445,12 +479,12 @@ server <- function(input, output) {
     
   }
   
-  ##### Render Plots in App #####
+  ##### Render Plots in App
   output$std <- renderPlot(
     stdPlots()
   )
   
-  #################### Analysis Samples Tab: Biorad ###################
+  ################## Analysis Samples Tab: Biorad ###################
   AnalysisSamples <- function(){
     
     ## Real Id, Sample, Replicate columns
@@ -479,7 +513,7 @@ server <- function(input, output) {
       wells_rnasep <- append(wells_rnasep, p)
     }
     wells_rnasep_def <- as.data.frame(head(wells_rnasep, length(a[,1])))
-    colnames(wells_rnasep_def) <- "Wells_RNAseP"
+    colnames(wells_rnasep_def) <- "Wells_gen3"
     
     ###### Ct columns 
     cq <- cqPlate()
@@ -515,7 +549,7 @@ server <- function(input, output) {
       if (is.na(cq_n2[i,])){
         lgcop_n2 <- append(lgcop_n2, NA)
       }else{
-        t <- as.numeric(as.character(cq_n2[i,1]))*coeffs[1,2]+coeffs[1,1]
+        t <- as.numeric(as.character(cq_n2[i,1]))*(coeffs[2,2])+coeffs[2,1]
         lgcop_n2 <- append(lgcop_n2, t)
       }
     }
@@ -602,14 +636,14 @@ server <- function(input, output) {
       ## c6 col ##
       if (c2[i] == c4[i]){
         c6 <- append(c6, c2[i])
-      }else if (c2[i,1] == "neg"){
+      }else if (c2[i] == "neg"){
         c6 <- append(c6, "dud")
       }else{
         c6 <- append(c6, "pos")
       }
       ## c7 col ##
       if (c3[i] == c5[i]){
-        c7 <- append(c7, c2[i])
+        c7 <- append(c7, c3[i])
       }else if (c3[i] == "neg"){
         c7 <- append(c7, "dud")
       }else{
@@ -631,8 +665,8 @@ server <- function(input, output) {
       }else{
         c9 <- append(c9, c8[i])
       }
-      ##
     }
+
     c1 <- as.data.frame(c1)
     c2 <- as.data.frame(c2)
     c3 <- as.data.frame(c3)
@@ -642,7 +676,6 @@ server <- function(input, output) {
     c7 <- as.data.frame(c7)
     c8 <- as.data.frame(c8)
     c9 <- as.data.frame(c9)
-    
     c9[] <- lapply(c9, as.character)
     
     indv <- vector()
@@ -659,6 +692,7 @@ server <- function(input, output) {
         indv <- append(indv, "-")
       }
     }
+    
     indv <- as.data.frame(indv)
     indv[] <- lapply(indv, as.character)
     
@@ -701,9 +735,10 @@ server <- function(input, output) {
   ################## Interpretation Tab: Biorad #########################
   interpretation <- function(){
     an <- AnalysisSamples()
+    ID <- unique(an$Real_ID)
     c10 <- vector()
-    s1 <- seq(from=1, to=120, by=2)
-    s2 <- seq(from=2, to=120, by=2)
+    s1 <- seq(from=1, to=117, by=2)
+    s2 <- seq(from=2, to=118, by=2)
     for (i in 1:length(s1)){
       if(an$indv[s1[i]] == an$indv[s2[i]]){
         c10 <- append(c10, an$indv[s1[i]])
@@ -727,8 +762,8 @@ server <- function(input, output) {
     
     interp <- as.data.frame(interp)
     interp[] <- lapply(interp, as.character)
-    final <- cbind(c10, interp)
-    colnames(final) <- c("", "Interpretation")
+    final <- cbind(ID, c10, interp)
+    colnames(final) <- c("ID","", "Interpretation")
     return(final)
   }
   
@@ -738,24 +773,48 @@ server <- function(input, output) {
     
     f <- defdt %>%
       formatStyle(
-        columns = 2,
+        columns = 3,
         backgroundColor = styleEqual(c("Positive", "Negative", "Repeat", "Calidad Insuficiente"), 
                                      c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
       )
     return(f)
   }
   
-  ##### Render in App ####
+  ##### Render in App
   output$interpret <- renderDataTable(
     interpretationDT()
   )
   
   
-  ##################### ID Well Tab: Biorad ##############################
+  ################## ID Well Tab: Biorad ##############################
+  SamplesToKeep <- function(){
+    inp <- readBiorad()[[1]]
+    g <- inp %>%
+      group_by(ID)
+    
+    g_sp <- group_split(g)
+    tokeep <- vector()
+    for (g in g_sp){
+      if(all(is.na(g$Cq)) == TRUE){
+        next
+      } else if (all(is.na(g$Cq)) == FALSE){
+        tokeep <- append(tokeep, as.numeric(as.character(unique(g$ID))))
+      } 
+    }
+    tokeep <-na.exclude(tokeep)
+    return(tokeep)
+  }
+
   IDWELLtab <- function(){
-    inp <- inputDF()
-    wellid <- cbind(inp$well, as.character(inp$Target), inp$Sample)
-    colnames(wellid) <- c("Well", "Target", "Sample")
+    inp <- readBiorad()[[1]]
+    wellid <- cbind(as.character(inp$Well), as.character(inp$Target), as.numeric(as.character(inp$ID)))
+    wellid <- as.data.frame(wellid)
+    colnames(wellid) <- c("Well", "Target", "ID")
+    
+    ## Get list of samples to keep
+    tokeep <- SamplesToKeep()
+    ## Keep only samples from wellid df
+    wellid <- wellid[wellid$ID %in% tokeep,]
     return(wellid)
   }
   
@@ -770,14 +829,18 @@ server <- function(input, output) {
   )
   
     
-  ################### ID Result Tab: Biorad ###############################
+  ################## ID Result Tab: Biorad ###############################
   idresult <- function(){
     an <- AnalysisSamples()
     int <- interpretation()
     realid <- unique(as.numeric(as.character(an$Real_ID)))
-    final <- as.data.frame(cbind(realid, int$Interpretation))
-    colnames(final)<- c("ID", "Interpretation")
-    return(final)
+    idres <- as.data.frame(cbind(realid, int$Interpretation))
+    colnames(idres)<- c("ID", "Interpretation")
+    
+    tokeep <- SamplesToKeep()
+    idres <- idres[idres$ID %in% tokeep,]
+    
+    return(idres)
   }
   
   output$downidres <- downloadHandler(
@@ -790,27 +853,62 @@ server <- function(input, output) {
     idresult()
   )
   
-  ###########################################################################
-  ######################### APPLIED QUANT STUDIO ############################
   
-  ################ Read Applied "Raw Data" Sheet: Applied ###################
-  readApplied <- function(){
-    res <- input$appl
-    samples <- read_xlsx(res$datapath, sheet = "Raw Data")
-    df <- data.frame(samples)
-    df <- df[-c(1:44),1:4]
-    colnames(df) <- c("Well", "Well_Position", "Cycle","Fluorescence")
-    return(df)
+  
+  
+  ################## APPLIED QUANT STUDIO ##################
+  ##########################################################
+  
+  ################## Read Applied "Raw Data" Sheet: Applied ###################
+    readApplied <- function(){
+        res <- input$appl
+        tbl_list <- list()
+        if (!is.null(res)){
+        ## Data
+        samples <- read_xlsx(res$datapath, sheet = "Raw Data")
+        df <- as.data.frame(samples)
+        df1 <- df[-c(1:44),1:4]
+        colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
+          
+        # Run Information
+        df2 <- samples[1:41,1:2]
+        df2 <- as.data.frame(df2)
+          
+        # List of genes
+        genes <- read_xlsx(res$datapath, sheet = "Results")
+        df <- as.data.frame(genes)
+        df3 <- df[-c(1:44),5]
+        df3 <- unique(df3)
+          
+        ## Append to list
+        tbl_list[[1]] <- df1 # Data
+        tbl_list[[2]] <- df2 # Run Information
+        tbl_list[[3]] <- df3 # List of genes
+          
+        return(tbl_list)
+        }
   }
+  ### Tab Names
+  output$gen1app <- renderText({
+    readApplied()[[3]][1]
+  })
   
-  ### Render in App ###
-  output$readapp <- renderTable(
-    readApplied()
-  )
+  output$gen2app <- renderText({
+    readApplied()[[3]][2]
+  })
   
-  ################# Transposed Tab: Applied #####################
+  output$gen3app <- renderText({
+    readApplied()[[3]][3]
+  })
+  
+  ### Render in App
+  output$readapp <- renderTable({
+    readApplied()[[1]]
+  })
+  
+  ################## Transposed Tab: Applied #####################
   aggApplied <- function(){
-    df <- readApplied()
+    df <- readApplied()[[1]]
     final <- df %>%
       pivot_wider(names_from = Cycle, values_from = Fluorescence)
     
@@ -820,7 +918,7 @@ server <- function(input, output) {
     return(f)
   }
   
-  ##### Render in App #####
+  ##### Render in App 
   output$trans <- renderTable(
     aggApplied()
   )
@@ -856,57 +954,57 @@ server <- function(input, output) {
     return(final)
   }
   
-  ###### Render N1 tab #######
-  output$transN1 <- renderTable(
+  ###### Render N1 tab 
+  output$transgen1 <- renderTable(
     getGenes()[1]
   )
   
   ## Download CSV ##
-  output$downtransN1 <- downloadHandler(
+  output$downtransgen1 <- downloadHandler(
     filename = "N1.csv",
     content = function(fname){
       write.csv(getGenes()[1], fname, quote = F, row.names = F)}
   )
   
-  ###### Render N2 tab #######
-  output$transN2 <- renderTable(
+  ###### Render N2 tab 
+  output$transgen2 <- renderTable(
     getGenes()[2]
   )
   
   ## Download CSV ##
-  output$downtransN2 <- downloadHandler(
+  output$downtransgen2 <- downloadHandler(
     filename = "N2.csv",
     content = function(fname){
       write.csv(getGenes()[2], fname, quote = F, row.names = F)}
   )
   
-  ###### Render RNAseP tab #######
-  output$transRNAsep <- renderTable(
+  ###### Render RNAseP tab 
+  output$transgen3 <- renderTable(
     getGenes()[3]
   )
   
   ## Download CSV ##
-  output$downtransRNAseP <- downloadHandler(
+  output$downtransgen3 <- downloadHandler(
     filename = "RNAseP.csv",
     content = function(fname){
       write.csv(getGenes()[3], fname, quote = F, row.names = F)}
   )
   
-  ############# Read Run Info: Applied ####################
-  readAppliedRunInfo <- function(){
+  ################## Read Run Info: Applied ####################
+  'readAppliedRunInfo <- function(){
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results")
     df <- data.frame(samples)
     df <- df[1:44,]
     return(df)
-  }
+  }'
   
-  #### Render in App ####
+  #### Render in App
   output$appliedruninfo <- renderTable({
-    readAppliedRunInfo()
+    readApplied()[[2]]
   })
   
-  ############ Read Results: Applied #####################
+  ################## Read Results: Applied #####################
   readAppliedResults <- function(){
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
@@ -920,7 +1018,7 @@ server <- function(input, output) {
     readAppliedResults()
   })
   
-  ############ Cq Plate Tab: Applied ##################
+  ################## Cq Plate Tab: Applied ##################
   cqPlateApp <- function(){
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -959,7 +1057,7 @@ server <- function(input, output) {
     printCqPlateApp()
   )
   
-  ############# Sample Plate Tab: Applied ##########################
+  ################## Sample Plate Tab: Applied ##########################
   samplePlateApp <- function(){
     inp <- readAppliedResults()
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
@@ -996,7 +1094,7 @@ server <- function(input, output) {
     printSamplePlateApp()
   )
   
-  #################### Check Sample Order Tab: Applied #######################
+  ################## Check Sample Order Tab: Applied #######################
   checkSamplesApp <- function(){
     s <- samplePlateApp()
     first <- data.frame(d = unlist(s[1:8], use.names = FALSE))
@@ -1042,12 +1140,12 @@ server <- function(input, output) {
     return(f)
   }
   
-  ##### Render Table ####
+  ##### Render Table
   output$samplecheckapp <- renderDataTable(
     checkSamplesAppDT()
   )
   
-  ############ Plate Setup MultiChanel for Applied #################### 
+  ################## Plate Setup MultiChanel for Applied #################### 
   setupMultiCApp <- function(){
     def <- checkSamplesApp()
     
@@ -1080,7 +1178,7 @@ server <- function(input, output) {
     setupMultiCAppDT()
   )
   
-  ################### Standard Curve Tab (Table): Applied #####################
+  ################## Standard Curve Tab (Table): Applied #####################
   stCurveApp <- function(){
     a <- data.frame(matrix(0, nrow = 5, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N1_dup1","N2_dup1","RNAseP_dup1","N1_dup2","N2_dup2","RNAseP_dup2","N1_avg","N2_avg","RNAseP_avg","N1_logcop","N2_logcop","RNAseP_logcop", "N1_copies", "N2_copies", "RNAseP_copies")
@@ -1162,7 +1260,7 @@ server <- function(input, output) {
     return(a)
   }
   
-  #### Convert to datatable ####
+  #### Convert to datatable 
   stCurveAppDT <- function(){
     a <- stCurveApp()
     ## Transform into data table
@@ -1184,7 +1282,7 @@ server <- function(input, output) {
     return(dt)
   }
   
-  ##### Render Table ####
+  ##### Render Table
   output$stdcurveapp <- renderDataTable(
     stCurveAppDT()
   )
@@ -1216,41 +1314,46 @@ server <- function(input, output) {
     return(coeff)
   }
   
-  ################### Standard Curve Tab (Plots): Applied ###########################
+  ################## Standard Curve Tab (Plots): Applied ###########################
   stdPlotsApp <- function(){
     a <- stCurveApp()
     n11 <- a$N1_avg[3:5]
     n22 <- a$N2_avg[3:5]
     cpp <- a$`log(copies)`[3:5]
-    p <- as.data.frame(cbind(as.numeric(n11),as.numeric(n22),as.numeric(cpp)))
-    colnames(p) <- c("n1", "n2", "cp")
+    pl1 <- as.data.frame(cbind(as.numeric(n11),as.numeric(cpp)))
+    colnames(pl1) <- c("n1", "cp")
+    pl1 <- pl1[complete.cases(pl1),]
     
-    form1 <- p$cp ~ p$n1
+    pl2 <- as.data.frame(cbind(as.numeric(n22),as.numeric(cpp)))
+    colnames(pl2) <- c("n2", "cp")
+    pl2 <- pl2[complete.cases(pl2),]
     
-    p1 <- ggplot(p, aes(x=n1, y = cp)) + 
+    form1 <- pl1$cp ~ pl1$n1
+    
+    p1 <- ggplot(pl1, aes(x=n1, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form1,
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                    parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[1])))+
+      ggtitle(paste("Standard curve for",toupper(colnames(pl1)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl1)[1]))) +
       ylab("log(Copies)")
     
-    form2 <- p$cp ~ p$n2
+    form2 <- pl2$cp ~ pl2$n2
     
-    p2 <- ggplot(p, aes(x=n2, y = cp)) + 
+    p2 <- ggplot(pl2, aes(x=n2, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form2, 
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
                    parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[2])))+
+      ggtitle(paste("Standard curve for",toupper(colnames(pl2)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[2]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl2)[1]))) +
       ylab("log(Copies)")
     
     s <- grid.arrange(p1, p2, nrow = 1)
@@ -1261,7 +1364,7 @@ server <- function(input, output) {
     stdPlotsApp()
   )
   
-  #################### Analysis Samples Tab: Applied ######################
+  ################## Analysis Samples Tab: Applied ######################
   AnalysisSamplesApp <- function(){
     
     ## Real Id, Sample, Replicate columns
@@ -1512,7 +1615,7 @@ server <- function(input, output) {
     AnalysisSamplesAppDT()
   })
   
-  ############# Interpretation Tab: Applied ####################
+  ################## Interpretation Tab: Applied ####################
   interpretationApp <- function(){
     an <- AnalysisSamplesApp()
     c10 <- vector()
@@ -1565,10 +1668,10 @@ server <- function(input, output) {
     interpretationAppDT()
   )
   
-  ############## ID Well Tab: Applied ###############
+  ################## ID Well Tab: Applied ###############
   IDWELLtabApp <- function(){
     inp <- readAppliedResults()
-    wellid <- cbind(inp$Well, as.character(inp$Target), inp$Sample)
+    wellid <- cbind(inp$Well_Position, as.character(inp$Target), inp$Sample)
     colnames(wellid) <- c("Well", "Target", "Sample")
     return(wellid)
   }
@@ -1583,7 +1686,7 @@ server <- function(input, output) {
       write.csv(IDWELLtabApp(), fname, quote = F, row.names = F)}
   )
   
-  ############ ID Result Tab: Applied ###################
+  ################## ID Result Tab: Applied ###################
   idresultApp <- function(){
     an <- AnalysisSamplesApp()
     int <- interpretationApp()
@@ -1603,10 +1706,11 @@ server <- function(input, output) {
     idresultApp()
   )
   
-  ###################################### TAQMAN #####################################
-  ###################################################################################
   
-  ################# Read CSVs: Taqman ############################
+  ################## TAQMAN ##################
+  ############################################
+  
+  ################## Read CSVs: Taqman ############################
   cyclesInput <- function(){
     dat <- input$taqmancsv
     if (!is.null(dat)){
@@ -1616,23 +1720,28 @@ server <- function(input, output) {
     }
   }
   
-  ################ Create gene list from input files ###############
+  ################## Gene List from input CSVs: Taqman ###############
   geneList <- function(){
     dat <- input$taqmancsv
     lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
                                                    basename(dat$name)))
     lst <- unlist(lst)
     out <- unique(lst)
+    def <- lapply(out, FUN = function(x) gsub(pattern = ".csv", replacement = "", out))
+    out <- unique(unlist(def))
+    
     return(out)
   }
   
-  ################# Well ID Tab: Taqman ###################
+  ################## ID Well Tab: Taqman ###################
   taqwellID <- function(){
     raw <- input$taqwellid
     if (!is.null(raw)){
-      data = read.csv(raw$datapath, sep = ';', header = TRUE, dec=',');
+      data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
       data[is.na(data)]<-""
       colnames(data)[3] <- "ID"
+      data$Well <- as.character(data$Well)
+      data <- as.data.frame(data)
       return(data)
     }else{
       return (NULL);
@@ -1648,11 +1757,11 @@ server <- function(input, output) {
     }
   })
   
-  ################# ID Result Tab: Taqman ###################
+  ################## ID Result Tab: Taqman ###################
   taqIDRes <- function(){
     idres <- input$taqidres
     if (!is.null(idres)){
-      data <- read.csv(idres$datapath, sep = ';', header = TRUE, dec=',');
+      data <- read.csv(idres$datapath, sep = ',', header = TRUE, dec=',');
       data <- data[,-3] 
       return(data)
     }
@@ -1668,17 +1777,18 @@ server <- function(input, output) {
     }
   })
   
-  ############## Combine ID well and ID results ###################
+  ################## Combine ID well and ID results: Taqman ###################
   combIDwellIDres <- function(){
     wellid <- taqwellID()
     idres <- taqIDRes()
     info <-merge(idres,wellid,by="ID")
-    info$Well2<-sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE)
-    info<-as.data.frame(info)
+    info$Well2<-as.character(sub('(?<![0-9])0*(?=[0-9])', '', info$Well, perl=TRUE))
+    info$Target <- as.character(info$Target)
+    info <-as.data.frame(info)
     return(info)
   }
   
-  ########## C Tab: Taqman #################
+  ################## C Tab: Taqman #################
   constVarendoC <- function(){
     info <- combIDwellIDres()
     C<-info[which(info$Target==input$endoC),] # select target
@@ -1690,7 +1800,7 @@ server <- function(input, output) {
     constVarendoC()
   })
   
-  ##### Info Tab: Taqman ########
+  ################## Info Tab: Taqman ########
   output$info <- renderTable({
     inf <- combIDwellIDres()
     if(is.null(inf)){
@@ -1700,21 +1810,25 @@ server <- function(input, output) {
     }
   })
   
-  ########### Plot dimensions: Taqman ############
+  ################## Plot dimensions: Taqman ############
   taqDim <- function(){
     C <- constVarendoC()
-    if (!is.null(input$dataendoC)){
-      raw <- read.csv(input$dataendoC$datapath, header = TRUE, sep = ",", dec=".")
-      raw<-raw[,-1]
-      raw<-raw[,C$Well2]
-      l<-round_any(rowMaxs(as.matrix(raw),value=T), 100, f = ceiling)
-      l <-max(l)
-      r<-dim(raw)
-      r<-r[2]
-      r<-as.integer(r)
-      lr <- list(l,r)
-      return(lr)
-    }
+    #Search for control in CSV filenames
+    control <- as.character(unique(C$Target))
+    csvs <- as.data.frame(input$taqmancsv)
+    out <- csvs[grep(control, csvs$name), ]
+    
+    # Read control data for 
+    raw <- read.csv(out$datapath, header = TRUE, sep = ",", dec=".")
+    raw<-raw[,-1]
+    raw<-raw[,C$Well2]
+    l<-round_any(rowMaxs(as.matrix(raw),value=T), 100, f = ceiling)
+    l <- max(l)
+    r<-dim(raw)
+    r<-r[2]
+    r<-as.integer(r)
+    lr <- list(l,r)
+    return(lr)
   }
   
   ################## General Plots Tab: Taqman ##################
@@ -1722,17 +1836,19 @@ server <- function(input, output) {
     info <- combIDwellIDres()
     lr <- taqDim()
     genes <- geneList()
-    #genes <- c("N1", "N2", "RNAseP")
+    
     pltList <- list()
     for (i in 1:length(genes)){
+      print(genes[i])
       df<-info[which(info$Target==genes[i]),] # select target
       df<-df[order(df$Well2),]
       
       ## load raw data (fluorescence-RFU per temperature) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       ## Read fluorescence data for target gene
       inp <- cyclesInput()
+      
       raw <- inp[i][[1]]
-      raw<-raw[,-1]
+      #raw<-raw[,-1]
       raw<-raw[,df$Well2]
       raw_s <- stack(raw)
       
@@ -1765,12 +1881,11 @@ server <- function(input, output) {
     }
   )
   
-  ############ Indetermined Plots: Taqman #################
+  ################## Indetermined Plots: Taqman #################
   indetPlots <- function(){
     info <- combIDwellIDres()
     lr <- taqDim()
     genes <- geneList()
-    
     defPltLs <- list()
     for (i in 1:length(genes)){
       ## Select target gene wells
@@ -1779,7 +1894,7 @@ server <- function(input, output) {
       ## Read fluorescence data for target gene
       inp <- cyclesInput()
       raw <- inp[i][[1]]
-      raw <- raw[,-1]
+      #raw <- raw[,-1]
       raw <- raw[,df$Well2]
       raw_s <- stack(raw)
       raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
@@ -1808,13 +1923,13 @@ server <- function(input, output) {
   }
   
   ## Render plots in app
-  output$n1 <- renderPlot({
+  output$indetgen1 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[1]], ncol = 2)
   })
   
   ## Download plots
-  output$downln1 <- downloadHandler(
+  output$downlgen1 <- downloadHandler(
     filename = ("N1_IndetPlots.pdf"),
     content = function(file){
       plots <- indetPlots()
@@ -1823,13 +1938,13 @@ server <- function(input, output) {
     }
   )
   # N2 tab
-  output$n2 <- renderPlot({
+  output$indetgen2 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[2]], ncol = 2)
   })
   
   ## Download plots
-  output$downln2 <- downloadHandler(
+  output$downlgen2 <- downloadHandler(
     filename = ("N2_IndetPlots.pdf"),
     content = function(file){
       plots <- indetPlots()
@@ -1839,13 +1954,13 @@ server <- function(input, output) {
   )
   
   #RNAsep tab
-  output$rnasep <- renderPlot({
+  output$indetgen3 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[3]], ncol = 2)
   })
   
   ## Download plots
-  output$downrnasep <- downloadHandler(
+  output$downlgen3 <- downloadHandler(
     filename = ("RNAseP_IndetPlots.pdf"),
     content = function(file){
       plots <- indetPlots()
@@ -1854,38 +1969,110 @@ server <- function(input, output) {
     }
   )
   
-  ###################################### SYBR #####################################
-  ###################################################################################
-  ######## Read "Run Information": SYBR ##########
-  readruninfoSYBR <- function(){
-    res <- input$sybr
-    runinfo <- read_xlsx(res$datapath, sheet = "Run Information")
-    df <- data.frame(runinfo)
-    return(runinfo)
-  }
-  
-  output$sybrruninfo <- renderTable({
-    readruninfoSYBR()
+  output$gen1 <- renderText({
+    geneList()[1]
   })
   
-  ######### Read "Data": SYBR ##############
-  readDataSYBR <- function(){
-    res <- input$sybr
-    samples <- read_xlsx(res$datapath, sheet = "Data")
-    df <- data.frame(samples)
-    df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
-    df <- as.data.frame(df)
-    colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
-    return(df)
-  }
-  
-  output$sybrdata <- renderTable({
-    readDataSYBR()
+  output$gen2 <- renderText({
+    geneList()[2]
   })
   
-  ######## Cq Plate Tab: SYBR ##############
+  output$gen3 <- renderText({
+    geneList()[3]
+  })
+
+  
+  
+  
+  ################## SYBR ##################
+  ##########################################
+  
+  
+  
+  ################## Read "Run Information" and "Data": SYBR ##########
+  # This function allows the user to upload either 1 Excel with 2 sheets (Data and Run Information)
+  # or to upload 2 independent CSVs with the Run Information and Quantification Summary (with Sample,
+  # Fluor, Target, Cq, etc columns)
+  readSYBR <- function(){
+      res <- input$sybr
+      tbl_list <- list()
+      if (!is.null(res)){
+      if (grepl("csv",res$datapath[[1]][1]) == TRUE){
+        tbl_list <- lapply(res$datapath, read.csv)
+        tmp <- as.data.frame(tbl_list[1]) %>%
+          select(Well, Fluor, Target, Content,Sample, Cq)
+        tbl_list[[1]] <- tmp
+        
+      } else if (grepl("xlsx", res$datapath[[1]][1]) == TRUE){
+        ## Read Data
+        dat <- read_xlsx(res$datapath, sheet = "Data")
+        df <- as.data.frame(dat)
+        df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+        df <- as.data.frame(df)
+        colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+        
+        ## Read Run Information
+        run <- read_xlsx(res$datapath, sheet = "Run Information")
+        df2 <- as.data.frame(run)
+        
+        ## Append to list
+        tbl_list[[1]] <- df
+        tbl_list[[2]] <- df2
+      }
+      return(tbl_list)
+    }
+  }
+  
+  output$sybrruninfo <- renderTable(
+    readSYBR()[2]
+  )
+  
+  output$sybrdata <- renderTable(
+    readSYBR()[1]
+  )
+  
+  ################## New_Cq Tab: Biorad ##################
+  newDataSYBR <- function(){
+    inp <- readSYBR()[[1]]
+    dat <- inp
+    dat$Sample <- as.character(dat$Sample)
+    for (i in 1:length(dat$Sample)){
+      ## Interm column
+      if (grepl("o", dat$Sample[i]) == TRUE){
+        dat$interm <- dat$Sample[i]
+      } else{
+        dat$interm <- ""
+      }
+      ## NewSample column
+      if (dat$Sample[i] == dat$interm[i]){
+        dat$news <- ""
+      } else {
+        dat$news <- dat$Sample[i]
+      }
+      ## Formula column
+      form <- rep(c(0,16,32,48,64,80,96,112), times = length(dat$Sample)/8)
+      dat$Formula <- as.character(form)
+      ## NewCq column
+      if (dat$Cq[i] == "Undetermined"){
+        dat$newcq[i] <- as.character(0)
+      } else if (is.na(dat$Cq[i]) == TRUE){
+        dat$newcq[i] <- as.character(0)
+      } else if (dat$Cq[i] == ""){
+        dat$newcq[i] <- as.character(0)
+      } else {
+        dat$newcq[i] <- dat$Cq[i]
+      }
+    }
+    return(dat)
+  }
+  
+  output$newdatasybr <- renderTable({
+    newDataSYBR()
+  })
+  
+  ################## Cq Plate Tab: SYBR ##############
   cqPlateSYBR <- function(){
-    inp <- readDataSYBR()
+    inp <- readSYBR()[[1]]
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
     e <- 24
@@ -1928,9 +2115,9 @@ server <- function(input, output) {
     printCqPlateSYBR()
   )
   
-  #################### Sample Plate Tab: SYBR ############################
+  ################## Sample Plate Tab: SYBR ############################
   samplePlateSYBR <- function(){
-    inp <- readDataSYBR()
+    inp <- readSYBR()[[1]]
     dt <- data.frame(matrix(nrow = 16, ncol = 24))
     s <- 1
     e <- 24
@@ -1966,29 +2153,35 @@ server <- function(input, output) {
     return(f)
   }
   
-  ###### Render Table in App ######
+  ###### Render Table in App 
   output$sampleplatesybr<- renderDataTable(
     printSamplePlateSYBR()
   )
   
-  #################### Check Sample Order Tab: SYBR #######################
+  ################## Check Sample Order Tab: SYBR #######################
   checkSamplesSYBR <- function(){
     s <- samplePlateSYBR()
-    
-    check1 <- rbind(s[1:14,][1:8])
-    colnames(check1) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
-    check2 <- rbind(s[1:14,][9:16])
-    colnames(check2) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
-    check3 <- rbind(s[1:14,][17:24])
-    colnames(check3) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
-    
-    all <- rbind(check1, check2, check3)
-    colnames(all) <- c("Duplicate_1.1", "Duplicate_1.2", "Duplicate_2.1", "Duplicate_2.2", "Duplicate_3.1", "Duplicate_3.2", "Duplicate_4.1", "Duplicate_4.2")
-    def <- all[complete.cases(all),]
+    check1 <- rbind(s[1:16,][1:6])
+    check2 <- rbind(s[1:16,][7:12])
+    check3 <- rbind(s[1:16,][13:18])
+    check4 <- rbind(s[1:16,][19:24])
+    odd<-seq(1,15,2)
+    even<-seq(2,16,2)
+    #colnames(check1) <- c("Dup_1.1", "Dup_1.2", "Dup_2.1", "Dup_2.2", "Dup_3.1", "Dup_3.2", "Dup_4.1", "Dup_4.2")
+    df  <- data.frame()
+    for (i in 1:6){
+      for (j in 1:8){
+        row <- as.numeric(cbind(check1[odd[j],i],check1[even[j],i],check2[odd[j],i],check2[even[j],i],check3[odd[j],i],check3[even[j],i],check4[odd[j],i],check4[even[j],i]))
+        df <- rbind(df,row)
+      }
+    }
+    print(df)
+    colnames(df) <- c("Dup_1.1", "Dup_1.2", "Dup_2.1", "Dup_2.2", "Dup_3.1", "Dup_3.2", "Dup_4.1", "Dup_4.2")
+    def <- df[complete.cases(df),]
     
     ## Add "coinciden" to script 
     for (i in 1:nrow(def)){
-      if (def[i,"Duplicate_1.1"] == def[i, "Duplicate_1.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_2.1"] && def[i, "Duplicate_1.1"] == def[i, "Duplicate_2.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_3.1"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_3.2"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_4.1"] && def[i,"Duplicate_1.1"] == def[i, "Duplicate_4.2"]){
+      if (def[i,"Dup_1.1"] == def[i, "Dup_1.2"] && def[i,"Dup_1.1"] == def[i, "Dup_2.1"] && def[i, "Dup_1.1"] == def[i, "Dup_2.2"] && def[i,"Dup_1.1"] == def[i, "Dup_3.1"] && def[i,"Dup_1.1"] == def[i, "Dup_3.2"] && def[i,"Dup_1.1"] == def[i, "Dup_4.1"] && def[i,"Dup_1.1"] == def[i, "Dup_4.2"]){
         def$Check[i] <- "Coinciden"
       } else {
         def$Check[i] <- "No coinciden"
@@ -2004,7 +2197,7 @@ server <- function(input, output) {
     f <- defdt %>% 
       formatStyle(
         columns = 1:2,
-        backgroundColor = "lightblue"
+        backgroundColor = "lightgreen"
       )%>%
       formatStyle(
         columns = 3:4,
@@ -2016,7 +2209,7 @@ server <- function(input, output) {
       ) %>%
       formatStyle(
         columns = 7:8,
-        backgroundColor = "seagreen"
+        backgroundColor = "lightblue"
       ) %>%
       formatStyle(
         columns = 9,
@@ -2025,17 +2218,17 @@ server <- function(input, output) {
     return(f)
   }
   
-  ####### Render Table in App ####
+  ####### Render Table in App
   output$samplechecksybr <- renderDataTable(
     checkSamplesSYBRDT()
   )
   
   
-  ################### Plate Setup MultiChanel: SYBR ########################
+  ################## Plate Setup MultiChanel: SYBR ########################
   setupMultiCSYBR <- function(){
     def <- checkSamplesSYBR()
     col1 <- rep(paste("S",1:43, sep = ""),each=1)
-    col2 <- unique(def$Duplicate_1.1)
+    col2 <- unique(def$Dup_1.1)
     multic <- as.data.frame(cbind(col1, col2))
     colnames(multic)<- c("Sample", "Real_ID")
     print(multic)
@@ -2062,7 +2255,7 @@ server <- function(input, output) {
     setupMultiCSYBRDT()
   )
   
-  ################### Standard Curve Tab (Table): SYBR #####################
+  ################## Standard Curve Tab (Table): SYBR #####################
   stCurveSYBR <- function(){
     a <- data.frame(matrix(0, nrow = 6, ncol = 24))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","N_dup1","S_dup1","RdRP_dup1","RPP30_dup1","N_dup2","S_dup2","RdRP_dup2","RPP30_dup2","N_avg","S_avg","RdRP_avg","RPP30_avg","N_logcop","S_logcop","RdRP_logcop", "RPP30_logcop","N_copies", "S_copies", "RdRP_copies","RPP30_copies")
@@ -2093,8 +2286,7 @@ server <- function(input, output) {
     rpp30 <- a$RPP30[3:6]
     cp <- a$`log(copies)`[3:6]
     p <- as.data.frame(cbind(as.numeric(n),as.numeric(s),as.numeric(rdrp),as.numeric(rpp30),as.numeric(cp)))
-    print(p)
-    colnames(p) <- c("N", "S","RdRP", "RPP30","cp")
+    #colnames(p) <- c("N", "S","RdRP", "RPP30","cp")
     
     model_n <- lm(cp ~ n, p)
     n_coeff1 <- as.numeric(model_n$coefficients[1])
@@ -2146,7 +2338,7 @@ server <- function(input, output) {
     return(a)
   }
   
-  #### Convert to datatable ####
+  # Convert to datatable 
   stCurveSYBRDT <- function(){
     a <- stCurveSYBR()
     ## Transform into data table
@@ -2154,7 +2346,7 @@ server <- function(input, output) {
     dt <- defdt %>%
       formatStyle(
         columns = c(5,9,13,17,21),
-        backgroundColor = "seagreen"
+        backgroundColor = "lightgreen"
       )%>%
       formatStyle(
         columns = c(6,10,14,18,22),
@@ -2172,46 +2364,51 @@ server <- function(input, output) {
     return(dt)
   }
   
-  ##### Render Table ####
+  ##### Render Table
   output$stdcurvesybr <- renderDataTable(
     stCurveSYBRDT()
   )
   
-  ################### Standard Curve Tab (Plots): SYBR ###########################
+  ################## Standard Curve Tab (Plots): SYBR ###########################
   stdPlotsSYBR <- function(){
     a <- stCurveSYBR()
     nn <- a$N_avg[3:6]
     rdrpp <- a$RdRP_avg[3:6]
     cpp <- a$`log(copies)`[3:6]
-    p <- as.data.frame(cbind(as.numeric(nn),as.numeric(rdrpp),as.numeric(cpp)))
-    colnames(p) <- c("n", "rdrp", "cp")
+    pl1 <- as.data.frame(cbind(as.numeric(nn),as.numeric(cpp)))
+    colnames(pl1) <- c("n", "cp")
+    pl1 <- pl1[complete.cases(pl1),]
     
-    form1 <- p$cp ~ p$n
+    pl2 <- as.data.frame(cbind(as.numeric(rdrpp),as.numeric(cpp)))
+    colnames(pl2) <- c("rdrp", "cp")
+    pl2 <- pl2[complete.cases(pl2),]
     
-    p1 <- ggplot(p, aes(x=n, y = cp)) + 
+    form1 <- pl1$cp ~ pl1$n
+    
+    p1 <- ggplot(pl1, aes(x=n, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form1,
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
-                   parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[1])))+
+                   parse = TRUE, na.rm = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(pl1)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[1]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl1)[1]))) +
       ylab("log(Copies)")
     
-    form2 <- p$cp ~ p$rdrp
+    form2 <- pl2$cp ~ pl2$rdrp
     
-    p2 <- ggplot(p, aes(x=rdrp, y = cp)) + 
+    p2 <- ggplot(pl2, aes(x=rdrp, y = cp)) + 
       geom_point()+
       geom_smooth(method = lm, se = F) +
       stat_poly_eq(formula = form2, 
                    label.x.npc = "right", label.y.npc = "top",
                    aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                   parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(p)[2])))+
+                   parse = TRUE, na.rm = TRUE) +
+      ggtitle(paste("Standard curve for",toupper(colnames(pl2)[1])))+
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(p)[2]))) +
+      xlab(paste("Dilutions",toupper(colnames(pl2)[1]))) +
       ylab("log(Copies)")
     
     s <- grid.arrange(p1, p2, nrow = 1)
@@ -2222,7 +2419,7 @@ server <- function(input, output) {
     stdPlotsSYBR()
   )
   
-  #################### Analysis Samples Tab: SYBR ######################
+  ################## Analysis Samples Tab: SYBR ######################
   AnalysisSamplesSYBR <- function(){
     
     ## Real Id, Sample, Replicate columns
@@ -2446,7 +2643,8 @@ server <- function(input, output) {
     }
     
     final <- cbind(a$Real_ID, sample, dup1, n_dup1, s_dup1, rdrp_dup1, rpp30_dup1, dup2, n_dup2, s_dup2, rdrp_dup2, rpp30_dup2,h1,h2,n1,n2,r1,r2, n1n2,s1s2,r1r2, npos, spos, rpos, score, assignment, comments)
-    colnames(final) <- c("Real_ID","Sample", "Duplicate1", "N_Ct_1", "S_Ct_1", "RdRP_Ct_1", "RPP30_Ct_1","Duplicate2","N_Ct_2", "S_Ct_2", "RdRP_Ct_2", "RPP30_Ct_2", "H1", "H2", "N1","N2","R1","R2", "N1N2", "S1S2", "R1R2", "Npos", "Spos", "Rpos", "Score", "Assignment", "Comments")
+    final <- as.data.frame(final)
+    colnames(final) <- c("Real_ID","Sample", "Dup1", "N_Ct_1", "S_Ct_1", "RdRP_Ct_1", "RPP30_Ct_1","Dup2","N_Ct_2", "S_Ct_2", "RdRP_Ct_2", "RPP30_Ct_2", "H1", "H2", "N1","N2","R1","R2", "N1N2", "S1S2", "R1R2", "Npos", "Spos", "Rpos", "Score", "Assignment", "Comments")
     return(final)
   }
   
@@ -2465,19 +2663,62 @@ server <- function(input, output) {
     AnalysisSamplesSYBRDT()
   })
   
+  ################## ID Well Tab: SYBR ##############################
+  IDWELLtabSYBR <- function(){
+    inp <- readSYBR()[[1]]
+    wellid <- cbind(as.character(inp$Well), as.character(inp$Target), as.character(inp$Sample))
+    wellid <- as.data.frame(wellid)
+    colnames(wellid) <- c("Well", "Target", "Sample")
+    out <- wellid[order(as.numeric(as.character(wellid$Sample))),]
+    out[out == ""] <- NA
+    def <- out[complete.cases(out),]
+    def <- def[!grepl("HeLa", def$Sample),]
+    def <- def[!grepl("10-*", def$Sample),]
+    return(def)
+  }
+  
+  output$downIDWELLsybr <- downloadHandler(
+    filename = "ID_well.csv",
+    content = function(fname){
+      write.csv(IDWELLtabSYBR(), fname, quote = F, row.names = F)}
+  )
+  output$IDWELLsybr <- renderTable(
+    IDWELLtabSYBR()
+  )
+  
+  ################## ID Result Tab: SYBR ###################
+  idresultSYBR <- function(){
+    an <- AnalysisSamplesSYBR()
+    realid <- as.numeric(as.character(an$Real_ID))
+    final <- as.data.frame(cbind(realid, as.character(an$Assignment)))
+    colnames(final)<- c("ID", "Interpretation")
+    return(final)
+  }
+  
+  output$downIDRESsybr <- downloadHandler(
+    filename = "ID_result.csv",
+    content = function(fname){
+      write.csv(idresultSYBR(), fname, quote = F, row.names = F)}
+  )  
+  
+  output$IDRESsybr <- renderTable(
+    idresultSYBR()
+  )
   
   
-  ####### Read CSVs with Tm: SYBR ######### 
+  ################### SYBR MELTING CURVE ANALYSIS ###################
+  
+  ################## Read CSVs with Tm: SYBR ######### 
   TMinput <- function(){
     dat <- input$sybrcsv
     if (!is.null(dat)){
-      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=";", dec=",")
+      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=",", dec=",")
       tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
       return(tbl_list)
     }
   }
   
-  ######## Gene List: SYBR ###########
+  ################## Gene List: SYBR ###########
   SybrGeneList <- function(){
     dat <- input$sybrcsv
     lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
@@ -2487,7 +2728,7 @@ server <- function(input, output) {
     return(out)
   }
   
-  ######## Well ID: SYBR ###########
+  ################## Well ID: SYBR ###########
   wellID <- function(){
     raw <- input$wellid
     if (!is.null(raw)){
@@ -2511,14 +2752,16 @@ server <- function(input, output) {
   })
 
   
-  ################# Fluos_Gene Tab: SYBR ###############
+  ################## Fluos_Gene Tab: SYBR ###############
   ##### Select target gene and match columns in fluorescence file
   ## matchTarget por archivo independiente
   matchTarget <- function(tm, gene){
     Well <- wellID()
+    #print(Well[which(Well$Target==gene),])
     well_gene <- Well[which(Well$Target==gene),] # select target
     #Select fluorescence matching columns
     fluos_gene<-tm[,well_gene$Well2]
+    
     return(fluos_gene)
   }
   
@@ -2528,6 +2771,7 @@ server <- function(input, output) {
     Well <- wellID()
     genes <- SybrGeneList()
     melt_gene <- TMinput()
+    
     matchLs <- list()
     for (i in 1:length(genes)){
       #Select matching target rows from well_id
@@ -2543,7 +2787,7 @@ server <- function(input, output) {
     matchAllTarget()
   })
   
-  ############ Fluo Temp Tab: SYBR ###############
+  '############ Fluo Temp Tab: SYBR ###############
   fluoTemp <- function(){
     fluos_gene <- matchAllTarget()
     melt_gene <- TMinput()
@@ -2551,7 +2795,8 @@ server <- function(input, output) {
     LsforPlot <- list()
     for (i in 1:length(genes)){
       fluo_temp <- cbind(melt_gene[[i]]$Temperature, fluos_gene[[i]])
-      colnames(fluo_temp)[1] <- "Temperature"
+      #fluo_temp <- fluos_gene[[i]]
+      #colnames(fluo_temp)[1] <- "Temperature"
       LsforPlot[[i]] <- fluo_temp
     }
     return(LsforPlot)
@@ -2559,9 +2804,9 @@ server <- function(input, output) {
   
   output$fluotemp <-renderTable({
     fluoTemp()
-  })
+  })'
   
-  ############# Melting Curve Plots: SYBR ##################
+  ################## Melting Curve Plots: SYBR ##################
   # Function to repeat temperature columns
   ## 5) Plot  TM curves
   # a) Define function
@@ -2576,6 +2821,13 @@ server <- function(input, output) {
     c<-as.integer(b+1)
     d<-as.integer(2*b)
     data_gene <- cbind(fluos_gene,rep.col(tm$Temperature,b))
+    f <- function(df){
+      out <- as.character(as.numeric(df))
+    }
+    #data_gene <- sapply(data_gene, f)
+    #print(str(data_gene))
+    data_gene <- as.data.frame(data_gene)
+    
     if (input$isderiv == TRUE){
       res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
     } else if (input$isderiv == FALSE){
@@ -2711,5 +2963,6 @@ server <- function(input, output) {
     t <- TMTable(),
     drive_upload(t, path = fullpath)
   )'
+  
   
 }
