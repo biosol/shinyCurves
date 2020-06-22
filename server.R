@@ -1,11 +1,10 @@
-################################# SHINY APP FOR QPCR ANALYSIS ############################################
+################################# SHINY APP (COMPLETE) FOR QPCR ANALYSIS ############################################
 ########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
 
 server <- function(input, output) {
   
   ################## BIORAD ##################
   ############################################
-  
   
   ################## Empty Plate Tab: Biorad #####################
   platesTable <- function(cnames, controls){
@@ -306,10 +305,10 @@ server <- function(input, output) {
     cq <- cqPlate()
     a$gen1_dup1 <- as.numeric(c(cq[7,8],NA,cq[15,8],cq[13,8], cq[11,8], cq[9,8]))
     a$gen2_dup1 <- as.numeric(c(cq[7,16],NA,cq[15,16],cq[13,16], cq[11,16], cq[9,16]))
-    a$gen3_dup1 <- as.numeric(c(cq[9,24],cq[15,24],NA,NA,NA,NA))
+    a$gen3_dup1 <- as.numeric(c(cq[7,24],cq[15,24],NA,NA,NA,NA))
     a$gen1_dup2 <- as.numeric(c(cq[8,8],NA,cq[16,8],cq[14,8], cq[12,8], cq[10,8]))
     a$gen2_dup2 <- as.numeric(c(cq[8,16],NA,cq[16,16],cq[14,16], cq[12,16], cq[10,16]))
-    a$gen3_dup2 <- as.numeric(c(cq[10,24],cq[16,24],NA,NA,NA, NA))
+    a$gen3_dup2 <- as.numeric(c(cq[8,24],cq[16,24],NA,NA,NA, NA))
     a$gen1_avg <- c(NA,NA,mean(c(a$gen1_dup1[3], a$gen1_dup2[3]), na.rm = T), mean(c(a$gen1_dup1[4], a$gen1_dup2[4]), na.rm = T), mean(c(a$gen1_dup1[5], a$gen1_dup2[5]), na.rm = T), mean(c(a$gen1_dup1[6], a$gen1_dup2[6]), na.rm = T))
     a$gen2_avg <- c(NA,NA,mean(c(a$gen2_dup1[3], a$gen2_dup2[3]), na.rm = T), mean(c(a$gen2_dup1[4], a$gen2_dup2[4]), na.rm = T), mean(c(a$gen2_dup1[5], a$gen2_dup2[5]), na.rm = T),mean(c(a$gen2_dup1[6], a$gen2_dup2[6]), na.rm = T))
     a$gen3_avg <- c(mean(c(a$gen3_dup1[1], a$gen3_dup2[1]), na.rm = T),mean(c(a$gen3_dup1[2], a$gen3_dup2[2]), na.rm = T),NA,NA,NA,NA)
@@ -394,7 +393,13 @@ server <- function(input, output) {
       formatStyle(
         columns = c(7,10,13,16,19),
         backgroundColor = "lightblue"
-      )
+      ) #%>%
+      #formatStyle(
+      #  columns = 7,
+      #  target = 'row',
+      #  backgroundColor = styleInterval(35, "tomato"),
+        #backgroundColor = styleInterval(35, c('white', 'tomato'))
+      #)
     
     return(dt)
   }
@@ -852,6 +857,10 @@ server <- function(input, output) {
   output$IDRESULT <- renderTable(
     idresult()
   )
+  
+  
+  
+  
   
   
   
@@ -1707,6 +1716,10 @@ server <- function(input, output) {
   )
   
   
+  
+  
+  
+  
   ################## TAQMAN ##################
   ############################################
   
@@ -1906,10 +1919,14 @@ server <- function(input, output) {
       merge_r<-merge[merge$Interpretation=="Repeat",]
       merge_r_persample<-split(merge_r,merge_r$ID,drop=T)
       
+      if (length(merge_r_persample) == 0){
+        mes <- "No indetermined plots to show"
+        return(mes)
+      } else {
       ## Plots
       pltList <- list()
       for (z in 1:length(merge_r_persample)){
-        pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]])
+        pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]], sep = "")
         pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
           geom_line()+
           geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
@@ -1917,12 +1934,94 @@ server <- function(input, output) {
           theme(legend.position = "none")+ 
           ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))
       }
-      defPltLs[[i]] <- pltList
-    } 
-    return(defPltLs)
+        defPltLs[[i]] <- pltList
+      }
+    }
+    return(defPltLs) 
   }
   
-  ## Render plots in app
+  ### Generate # tabs with X names depeding on user input files
+  output$indetplots <- renderUI({
+    genes <- geneList()
+    nbgenes <- c(1:length(geneList()))
+    tabs <- lapply(genes, function(x){
+      tabPanel(
+        title=uiOutput(x), 
+        textOutput(paste("text",x,sep="")), 
+        uiOutput(paste("down",x,sep="")), 
+        plotOutput(paste("indet",x,sep=""), height = "500px")
+      )
+    })
+    
+    ## Tab Names
+    lapply(genes, function(x){
+      output[[x]] <- renderText({
+        x 
+      })
+    })
+    
+    ## Message for no "Repeat" samples
+    lapply(genes, function(x){
+      output[[paste("text",x,sep="")]] <- renderText({
+        ls <- indetPlots()
+        if (is.list(ls) == FALSE){
+          print(ls)
+        } else {
+          print(NULL)
+        } 
+      })
+    })
+    
+    ## Download Plots (Button)
+    lapply(genes, function(x){
+      output[[paste("down",x,sep="")]] <- renderUI({
+        ls <- indetPlots()
+        if (is.list(ls) == TRUE){
+          downloadButton(paste("downl",x,sep=""), "Download PDF")
+        } else{
+          NULL
+        }
+      })
+    })
+    
+    ## Download Plots (Handler)
+    lapply(nbgenes, function(x){
+      output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
+        filename = paste(genes[x],"_IndetPlots.pdf",sep=""),
+        content = function(file){
+          plots <- indetPlots()
+          p <- plot_grid(plotlist = plots[[x]], ncol = 2)
+          save_plot(file, p, ncol = 1, base_height = 6, base_width = 8)
+        }
+      )
+    })
+    
+    ## Render Plots
+    lapply(nbgenes, function(x){
+      output[[paste("indet",genes[x],sep="")]] <- renderPlot({
+        plots <- indetPlots()
+        if (is.list(plots) == TRUE){
+          plot_grid(plotlist = plots[[x]], ncol = 2)
+        } else {
+        }
+      })
+    })
+    
+    do.call(tabsetPanel,c(tabs))
+    
+  })
+  
+  'output$indetgen1 <- renderUI({
+    ls <- indetPlots()
+    print(str(ls))
+    if (is.character(ls) == TRUE){
+      textOutput("indetgen1")
+      print(ls)
+    } else {
+      plot_grid(plotlist = ls[[1]], ncol = 2)
+    }
+  })
+  
   output$indetgen1 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[1]], ncol = 2)
@@ -1937,11 +2036,24 @@ server <- function(input, output) {
       save_plot(file, p, ncol = 2, paper="a4")
     }
   )
+  
   # N2 tab
+  output$indetgen2 <- renderUI({
+    ls <- indetPlots()
+    
+    if (is.vector(ls) == TRUE){
+      textOutput("indetgen2")
+      print(ls)
+    } else {
+      plot_grid(plotlist = ls[[2]], ncol = 2)
+    }
+  })
+  
   output$indetgen2 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[2]], ncol = 2)
   })
+  
   
   ## Download plots
   output$downlgen2 <- downloadHandler(
@@ -1954,6 +2066,16 @@ server <- function(input, output) {
   )
   
   #RNAsep tab
+  output$indetgen3 <- renderUI({
+    ls <- indetPlots()
+    if (is.vector(ls) == TRUE){
+      textOutput("indetgen3")
+      print(ls)
+    } else {
+      plot_grid(plotlist = ls[[3]], ncol = 2)
+    }
+  })
+  
   output$indetgen3 <- renderPlot({
     ls <- indetPlots()
     plot_grid(plotlist = ls[[3]], ncol = 2)
@@ -1979,15 +2101,13 @@ server <- function(input, output) {
   
   output$gen3 <- renderText({
     geneList()[3]
-  })
+  })'
 
   
   
   
   ################## SYBR ##################
   ##########################################
-  
-  
   
   ################## Read "Run Information" and "Data": SYBR ##########
   # This function allows the user to upload either 1 Excel with 2 sheets (Data and Run Information)
@@ -2706,13 +2826,17 @@ server <- function(input, output) {
   )
   
   
+  
+  
+  
+  
   ################### SYBR MELTING CURVE ANALYSIS ###################
   
   ################## Read CSVs with Tm: SYBR ######### 
   TMinput <- function(){
     dat <- input$sybrcsv
     if (!is.null(dat)){
-      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=",", dec=",")
+      tbl_list <- lapply(dat$datapath, read.csv, header=TRUE, sep=";", dec=",")
       tbl_list <- lapply(tbl_list, function(x){x[1]<-NULL;x})
       return(tbl_list)
     }
@@ -2824,19 +2948,67 @@ server <- function(input, output) {
     f <- function(df){
       out <- as.character(as.numeric(df))
     }
-    #data_gene <- sapply(data_gene, f)
-    #print(str(data_gene))
     data_gene <- as.data.frame(data_gene)
     
     if (input$isderiv == TRUE){
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5),is.deriv=T)
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=as.numeric(input$cutarea),Tm.border=c(as.numeric(input$lowertmborder),as.numeric(input$uppertmborder)),is.deriv=T)
     } else if (input$isderiv == FALSE){
-      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=10,Tm.border=c(0.5,0.5))
+      res_gene <- meltcurve(data_gene,temps=c(c:d),fluos=c(1:b),cut.Area=input$cutarea,Tm.border=c(input$lowertmborder,input$uppertmborder))
     }
   }
   
   ##### b) Render plots for each gene in a different tab
-  output$sybrN <- renderPlot({
+  output$tmplots <- renderUI({
+    genes <- SybrGeneList()
+    nbgenes <- c(1:length(SybrGeneList()))
+    tabs <- lapply(genes, function(x){
+      tabPanel(
+        title=uiOutput(x), 
+        textOutput(paste("text",x,sep="")), 
+        uiOutput(paste("down",x,sep="")), 
+        plotOutput(paste("tm",x,sep=""), height = "500px")
+      )
+    })
+    
+    ## Tab Names
+    lapply(genes, function(x){
+      output[[x]] <- renderText({
+        x 
+      })
+    })
+    
+    ## Download Plots (Button)
+    lapply(genes, function(x){
+      output[[paste("down",x,sep="")]] <- renderUI({
+        downloadButton(paste("downl",x,sep=""), "Download PDF")
+      })
+    })
+    
+    ## Download Plots (Handler)
+    lapply(nbgenes, function(x){
+      output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
+        filename = (paste(genes[x],"_TMPlots.pdf")),
+        content = function(file){
+          pdf(file)
+          tm <- TMinput()
+          genes <- SybrGeneList()
+          p <- TMPlots(tm[[x]], genes[[x]])
+          dev.off()
+        })
+    })
+    
+    ## Render Plots
+    lapply(nbgenes, function(x){
+      output[[paste("tm",genes[x],sep="")]] <- renderPlot({
+        tm <- TMinput()
+        TMPlots(tm[[x]], genes[x])
+      })
+    })
+    
+    do.call(tabsetPanel,c(tabs))
+  })
+  
+  'output$sybrN <- renderPlot({
     tm <- TMinput()
     genes <- SybrGeneList()
     TMPlots(tm[[1]], genes[[1]])
@@ -2899,7 +3071,7 @@ server <- function(input, output) {
       genes <- SybrGeneList()
       p <- TMPlots(tm[[4]], genes[[4]])
       dev.off()
-    })
+    })'
   
   ################## TM Results: SYBR #######################
   ## 7) Load data and generate output table
@@ -2965,4 +3137,5 @@ server <- function(input, output) {
   )'
   
   
+          
 }

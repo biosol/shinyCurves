@@ -1,4 +1,4 @@
-################################# SHINY APP FOR QPCR ANALYSIS ############################################
+################################# SHINY APP (COMPLETE) FOR QPCR ANALYSIS ############################################
 ########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
 ui <- fluidPage(
   titlePanel(strong("qPCR Analysis")),
@@ -9,7 +9,8 @@ ui <- fluidPage(
         condition = "input.taqexcel == true",
         fileInput("biorad", 
                   label = "Upload BioRad CFX results file",
-                  multiple = TRUE)
+                  multiple = TRUE),
+        numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
       ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
       conditionalPanel(
@@ -26,7 +27,6 @@ ui <- fluidPage(
                   multiple = TRUE),
         numericInput("ct", "Enter Ct value", value = 40),
         textInput("endoC", "Enter endogenous control", value = "RNAseP"),
-        #fileInput("dataendoC", "Enter qPCR results for endoC"),
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_results.csv here")
       ),
@@ -36,6 +36,7 @@ ui <- fluidPage(
         fileInput("sybr",
                   label = "Upload Excel or CSVs here",
                   multiple = TRUE),
+        numericInput("maxendocsybr", "Maximum cycle number for endogenous control", value = 35),
       ),
       checkboxInput("meltsybr", "3b) Analysis: SYBR Melting Curves"),
       conditionalPanel(
@@ -43,6 +44,9 @@ ui <- fluidPage(
         fileInput("sybrcsv",
                   label="Upload CSV here",
                   multiple = TRUE),
+        numericInput("cutarea", "Enter cut.Area value", value = 10),
+        numericInput("lowertmborder", "Enter lower Tm border", value = 0.5),
+        numericInput("uppertmborder", "Enter upper Tm border", value = 0.5),
         radioButtons("isderiv", "Isderiv?",
                      choices = c(True = TRUE,
                                  False = FALSE),
@@ -112,13 +116,7 @@ ui <- fluidPage(
           tabPanel("C", tableOutput("c")),
           tabPanel("Info", tableOutput("info")),
           tabPanel("General Plots", downloadButton("downgen", "Download PDF"), plotOutput("genplots", height = "1000px")),
-          tabPanel("Indet Plots", 
-                   tabsetPanel(
-                     tabPanel(title=uiOutput("gen1"),fluidRow(downloadButton("downlgen1", "Download PDF"), plotOutput("indetgen1", height = "500px"))),
-                     tabPanel(title=uiOutput("gen2"), fluidRow(downloadButton("downlgen2", "Download PDF"), plotOutput("indetgen2", height = "500px"))),
-                     tabPanel(title=uiOutput("gen3"), fluidRow(downloadButton("downlgen3", "Download PDF"), plotOutput("indetgen3", height = "500px")))
-                   )
-          )
+          tabPanel("Indet Plots", uiOutput("indetplots"))
         )
       ),
       ###### 3) Main Panel for SYBR ########
@@ -148,14 +146,7 @@ ui <- fluidPage(
           tabPanel("ID_well", tableOutput("well")),
           tabPanel("Fluos_Gene", tableOutput("fluosgene")),
           tabPanel("Fluo_Temp", tableOutput("fluotemp")),
-          tabPanel("TM Plots", 
-                   tabsetPanel(
-                       tabPanel("N", fluidRow(downloadButton("downsybrN", "Download PDF"), plotOutput("sybrN", height = "1000px"))),
-                       tabPanel("Rdrp",fluidRow(downloadButton("downsybrRdrp", "Download PDF"), plotOutput("sybrRdrp", height = "1000px"))),
-                       tabPanel("Rpp30", fluidRow(downloadButton("downsybrRpp30", "Download PDF"), plotOutput("sybrRpp30", height = "1000px"))),
-                       tabPanel("S", fluidRow(downloadButton("downsybrS", "Download PDF"), plotOutput("sybrS", height = "1000px")))
-                   ),
-          ),
+          tabPanel("TM Plots", uiOutput("tmplots")),
           tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), actionButton("send2drive", "Send to Google Drive", icon = icon("google-drive", lib="font-awesome")),
                    tableOutput("tmtable")
           )
