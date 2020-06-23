@@ -10,7 +10,13 @@ ui <- fluidPage(
         fileInput("biorad", 
                   label = "Upload BioRad CFX results file",
                   multiple = TRUE),
+        textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
+        numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4),
+        numericInput("minctbiorad", "Sample is considered POSITIVE with Ct below:", value = 40),
+        numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
+        radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
+        numericInput("posctrlbiorad", "How many POSITIVE CONTROLS are you using?", value = 4)
       ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
       conditionalPanel(
@@ -48,8 +54,8 @@ ui <- fluidPage(
         numericInput("lowertmborder", "Enter lower Tm border", value = 0.5),
         numericInput("uppertmborder", "Enter upper Tm border", value = 0.5),
         radioButtons("isderiv", "Isderiv?",
-                     choices = c(True = TRUE,
-                                 False = FALSE),
+                     choices = c(Yes = TRUE,
+                                 No = FALSE),
                      selected = TRUE),
         fileInput("wellid",
                   label="Upload ID_well.csv here")
@@ -65,7 +71,6 @@ ui <- fluidPage(
           tabPanel("Empty Plate", dataTableOutput("plate")),
           tabPanel("Raw Data", tableOutput("inputdf")),
           tabPanel("Run Information", tableOutput("BRruninfo")),
-          #tabPanel("New Data", tableOutput("newdatabiorad")),
           tabPanel("Cq Plate", dataTableOutput("cqplate")),
           tabPanel("Sample Plate", dataTableOutput("sampleplate")),
           tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),

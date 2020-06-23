@@ -62,6 +62,19 @@ server <- function(input, output) {
       tmp <- as.data.frame(tbl_list[1]) %>%
         select(Well, Fluor, Target, Content,Sample, Cq)
       colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+      ## Correct A1 to A01, etc
+      newwell <- vector()
+      for (i in tmp$Well){
+        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+          stri_sub(i, 2, 1) <- 0
+          newwell <- append(newwell, i)
+        } else {
+          newwell <- append(newwell, i)
+        }
+      }
+      tmp$Well <- newwell
+      colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+      
       tbl_list[[1]] <- tmp
       
       ## Read Data from 1 Excel
@@ -70,6 +83,18 @@ server <- function(input, output) {
       df <- as.data.frame(dat)
       df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
       df <- as.data.frame(df)
+      
+      ## Correct A1 to A01, etc
+      newwell <- vector()
+      for(i in df$Well){
+        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+          stri_sub(i, 2, 1) <- 0
+          newwell <- append(newwell, i)
+        } else {
+          newwell <- append(newwell, i)
+        }
+      }
+      df$Well <- newwell
       colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
       
       ## Read Run Information
@@ -79,7 +104,17 @@ server <- function(input, output) {
       ## Append to list
       tbl_list[[1]] <- df
       tbl_list[[2]] <- df2
-    }
+      }
+    
+    ## Gene List
+    inp <- tbl_list[[1]]
+    genes <- unique(inp$Target)
+    genes <- as.character(genes)
+    genes[genes == ""] <- NA
+    genes <- as.character(na.exclude(genes))
+    
+    # Add to list
+    tbl_list[[3]] <- genes
     return(tbl_list)
   }
   
@@ -91,79 +126,38 @@ server <- function(input, output) {
     readBiorad()[[1]]
   )
   
-  ################## New_Cq Tab: Biorad ##################
-  newDataBiorad <- function(){
-    inp <- readBiorad()[[1]]
-    dat <- inp
-    dat$Sample <- as.character(dat$Sample)
-    for (i in 1:length(dat$Sample)){
-      ## Interm column
-      if (grepl("o", dat$Sample[i]) == TRUE){
-        dat$interm <- dat$Sample[i]
-      } else{
-        dat$interm <- ""
-      }
-      ## NewSample column
-      if (dat$Sample[i] == dat$interm[i]){
-        dat$news <- ""
-      } else {
-        dat$news <- dat$Sample[i]
-      }
-      ## Formula column
-      form <- rep(c(0,16,32,48,64,80,96,112), times = length(dat$Sample)/8)
-      dat$Formula <- as.character(form)
-      ## NewCq column
-      if (dat$Cq[i] == "Undetermined"){
-        dat$newcq[i] <- as.character(0)
-      } else if (is.na(dat$Cq[i]) == TRUE){
-        dat$newcq[i] <- as.character(0)
-      } else if (dat$Cq[i] == ""){
-        dat$newcq[i] <- as.character(0)
-      } else {
-        dat$newcq[i] <- dat$Cq[i]
-      }
-    }
-    return(dat)
-  }
-  
-  output$newdatabiorad <- renderTable({
-    newDataBiorad()
-  })
-  
   ################## Cq Plate Tab: Biorad ######################
   cqPlate <- function(){
-    #inp <- inputDF()
     inp <- readBiorad()[[1]]
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$Cq[s:e]
-      s <- s + 24
-      e <- e + 24
+    r <- vector()
+    c <- vector()
+    newwell <- vector()
+    for (i in inp$Well){
+      r <- append(r,str_sub(i,1,1))
+      c <- append(c, str_sub(i,-2))
     }
-    dt <- dt %>% 
-      mutate_if(is.numeric, round, digits = 3)
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- inp$Cq[i]
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny
   printCqPlate <- function(){
     dt <- cqPlate()
-    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:8,
-        backgroundColor = "yellow"
-      ) %>%
-      formatStyle(
-        columns = 9:16,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 17:24,
-        backgroundColor = "lightblue")
-    return(f)
+    defdt <- datatable(dt, rownames = T, options = list(pageLength = 20)) %>%
+      formatRound(columns = c(1:ncol(dt)), digits = 3)
+    return(defdt)
   }
   
   #### Render Table in App ### 
@@ -173,36 +167,35 @@ server <- function(input, output) {
   
   ################## Sample Plate Tab: Biorad ############################
   samplePlate <- function(){
-    #inp <- inputDF()
     inp <- readBiorad()[[1]]
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$ID[s:e]
-      s <- s + 24
-      e <- e + 24
+    inp$ID <- as.character(inp$ID)
+    r <- vector()
+    c <- vector()
+    for (i in inp$Well){
+      r <- append(r,str_sub(i,1,1))
+      c <- append(c, str_sub(i,-2))
     }
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- as.character(inp$ID[i])
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny ##
   printSamplePlate <- function(){
     dt <- samplePlate()
-    defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:8,
-        backgroundColor = "yellow"
-      ) %>%
-      formatStyle(
-        columns = 9:16,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 17:24,
-        backgroundColor = "lightblue")
-    return(f)
+    defdt <- datatable(dt, rownames = T,  options = list(pageLength = 20))
+    return(defdt)
   }
   
   ###### Render Table in App
@@ -295,7 +288,141 @@ server <- function(input, output) {
   
   ################## Standard Curve Tab (Table): Biorad #######################
   stCurve <- function(){
-    a <- data.frame(matrix(0, nrow = 6, ncol = 19))
+    inp <- readBiorad()[[1]]
+    genes <- readBiorad()[[3]]
+    
+    # Get control rows
+    ctrls <- lapply(genes, function(x){
+      inp[grepl(x, inp$ID),]
+      })
+    ctrls <- bind_rows(ctrls)
+    
+    # Prepare data frame depending on nb of controls and duplicates
+    nbctrls <- as.character(unique(ctrls$ID))
+    
+    ## If user has duplicates
+    if(input$dupsbiorad == TRUE){
+      a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+(length(genes)*2)+length(genes)*3))
+      
+      #Prepare colnames
+      colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
+      l <- lapply(genes, function(x){
+        list(rep(paste(x,"(Dup",1:2,")",sep=""),each=1),paste(x,"(Avg)", sep=""),paste(x,"(LogCopies)",sep=""),paste(x,"(Copies)",sep=""))
+      })
+      l <- unlist(l)
+      colnames(a)[4:ncol(a)] <- l
+      
+      ## Sample
+      smp <- lapply(nbctrls, function(x){str_split(x,"_")})
+      smp <- unlist(smp)
+      smp <- as.character(unique(grep("10-", smp,value = TRUE)))
+      smp <- smp[order(nchar(smp), smp)]
+      #a$Sample <-c("NTC", "C(-)", smp)
+      rownames(a) <- c("NTC", "C(-)", smp)
+      
+      ## Dilution
+      dils <- lapply(smp, function(x){str_split(x,"-")})
+      dilsnum <- lapply(dils, function(x){as.numeric(x[[1]])})
+      dilsfin <- lapply(dilsnum, function(x){x[[1]]^x[[2]]})
+      dilsfin <- unlist(dilsfin)
+      dilsfin <- sort(dilsfin)
+      a$Dilution <- c(NA, NA, dilsfin)
+      
+      ##Copies
+      copies<- lapply(a$Dilution, function(x){200000*2/x})
+      copies <- unlist(copies)
+      a$Copies <- as.numeric(copies)
+      
+      ##log(Copies)
+      logcopies <- lapply(a$Copies, function(x){log(x, base = 10)})
+      logcopies <- unlist(logcopies)
+      a$logCopies <- as.numeric(logcopies)
+      
+      ## Duplicates
+      ctrls$Target <- as.character(ctrls$Target)
+      ctrls$ID <- as.character(ctrls$ID)
+      ctrls$Cq <- as.character(ctrls$Cq)
+      ctrls_sp <- split(ctrls, ctrls$Target)
+      
+      ## Gene duplicates and avg
+      for (dil in rownames(a)[3:length(rownames(a))]){
+        for (df in ctrls_sp){
+          tmp <- df[grep(dil,df$ID),]
+          tmp$Cq <- as.numeric(tmp$Cq)
+          tmp_s <- str_split(tmp$ID[1], "_")
+          tmp_s <- unlist(tmp_s)
+          if (!is.na(tmp_s[1])){
+            a[tmp_s[2],paste(unique(tmp$Target),"(Dup1)",sep="")] <- tmp$Cq[1]
+            a[tmp_s[2],paste(unique(tmp$Target),"(Dup2)",sep="")] <- tmp$Cq[2]
+            a[tmp_s[2],paste(unique(tmp$Target),"(Avg)",sep="")] <- mean(a[tmp_s[2],paste(unique(tmp$Target),"(Dup1)",sep="")], a[tmp_s[2],paste(unique(tmp$Target),"(Dup2)",sep="")], na.rm = TRUE)
+          }
+        }
+      }
+      
+      ## Negative control
+      control <- ctrls_sp[grep(input$endocbiorad, ctrls_sp)]
+      control <- as.data.frame(control)
+      colnames(control) <- c("Well","Fluor","Target","Content","ID","Cq")
+      negc <- control[grep("negC", control$ID),]
+      negc$Cq <- as.numeric(negc$Cq)
+      a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")] <- negc$Cq[1]
+      a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")] <- negc$Cq[2]
+      a["C(-)", paste(unique(negc$Target),"(Avg)",sep="")] <- mean(a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")],a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")])
+      
+      ## NTC
+      ntc <- lapply(ctrls_sp, function(x){
+        x[grep("NTC", x$ID),]
+      })
+      
+      for (i in 1:length(genes)){
+        df <- ntc[grep(genes[i], ntc)]
+        #print(df)
+        df <- as.data.frame(df)
+        colnames(df) <- c("Well","Fluor","Target","Content","ID","Cq")
+        df$Cq <- as.numeric(df$Cq)
+        a["NTC", paste(unique(df$Target),"(Dup1)", sep = "")] <- df$Cq[1]
+        a["NTC", paste(unique(df$Target),"(Dup2)", sep = "")] <- df$Cq[2]
+        a["NTC", paste(unique(df$Target),"(Avg)", sep = "")] <- mean(a["NTC", paste(unique(df$Target),"(Dup1)", sep = "")],a["NTC", paste(unique(df$Target),"(Dup2)", sep = "")], na.rm = TRUE)
+      }
+      
+      ## Coefficients
+      cp <- a$logCopies
+      avgs <- a[,grep("Avg", names(a))]
+      avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
+      avgs_def <- avgs[,avgs_genes]
+      
+      avgs_cp <- cbind(avgs_def, cp)
+      d <- data.frame()
+      coefficients <- sapply(avgs_cp, function(x){
+        model <- lm(cp ~ x, avgs_cp)
+        #print(model$coefficients)
+        coeff1 <- as.numeric(model$coefficients[1])
+        #print(coeff1)
+        coeff2 <- as.numeric(model$coefficients[2])
+        #print(coeffs2)
+        coeffs <- as.data.frame(cbind(coeff1, coeff2))
+        #colnames(coeffs) <-c("Intercept", "Slope")
+      })
+      rownames(coefficients) <- c("Intercept", "Slope")
+      #####
+      
+      
+      
+      ## If user has no duplicates
+    } else if (input$dupsbiorad == FALSE){
+      a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 4+length(genes)+length(genes)*3))
+      #Prepare colnames
+      colnames(a)[1:3] <- c("Dilution","Copies","log(Copies)")
+      l <- lapply(genes, function(x){
+        list(x, paste(x,"(Avg)", sep=""),paste(x,"(LogCopies)",sep=""),paste(x,"(Copies)",sep=""))
+      })
+      l <- unlist(l)
+      colnames(a)[5:ncol(a)] <- l
+    }
+    
+    
+    
+    'a <- data.frame(matrix(0, nrow = 6, ncol = 19))
     colnames(a)<-c("Sample","Dilution","Copies","log(copies)","gen1_dup1","gen2_dup1","gen3_dup1","gen1_dup2","gen2_dup2","gen3_dup2","gen1_avg","gen2_avg","gen3_avg","gen1_logcop","gen2_logcop","gen3_logcop", "gen1_copies", "gen2_copies", "gen3_copies")
     a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-3","C(+)10-4","C(+)10-5")
     a$Dilution <- c("-","-",100,1000,10000,100000)
@@ -333,9 +460,8 @@ server <- function(input, output) {
     colnames(gen2_coeff) <- c("Intercept", "Slope")
     
     coeff <- as.data.frame(rbind(gen1_coeff, gen2_coeff))
-    rownames(coeff) <- c("gen1", "gen2")
-    ###############################################################
-    
+    rownames(coeff) <- c("gen1", "gen2")'
+    ############################################################### 
     ## log(Copies) ##
     for (i in 1:length(a$gen1_avg)){
       if(is.na(a$gen1_avg[i])== TRUE){
@@ -601,7 +727,7 @@ server <- function(input, output) {
       ## c1 col ##
       if(is.na(as.numeric(as.character(cq_rnasep[i,1]))) == TRUE){
         c1 <- append(c1,"OJO")
-      }else if (cq_rnasep[i,1] > 35){
+      }else if (cq_rnasep[i,1] > as.numeric(input$maxendocbiorad)){
         c1 <- append(c1,"OJO")
       }else{
         c1 <- append(c1,"OK")
@@ -609,7 +735,7 @@ server <- function(input, output) {
       ## c2 col ##
       if(is.na(cop_n1[i,1]) == TRUE){
         c2 <- append(c2, "neg")
-      } else if (cop_n1[i,1] > 4){
+      } else if (cop_n1[i,1] > as.numeric(input$mincnvbiorad)){
         c2 <- append(c2, "pos")
       }else{
         c2 <- append(c2, "neg")
@@ -617,7 +743,7 @@ server <- function(input, output) {
       ## c3 col ##
       if(is.na(cop_n2[i,1]) == TRUE){
         c3 <- append(c3, "neg")
-      }else if (cop_n2[i,1] > 4){
+      }else if (cop_n2[i,1] > as.numeric(input$mincnvbiorad)){
         c3 <- append(c3, "pos")
       }else{
         c3 <- append(c3, "neg")
@@ -625,7 +751,7 @@ server <- function(input, output) {
       ## c4 col ##
       if(is.na(cq_n1[i,1]) == TRUE){
         c4 <- append(c4, "neg")
-      }else if(cq_n1[i,1] < 40){
+      }else if(cq_n1[i,1] < as.numeric(input$minctbiorad)){
         c4 <- append(c4, "pos")
       }else{
         c4 <- append(c4, "neg")
@@ -633,7 +759,7 @@ server <- function(input, output) {
       ## c5 col ##
       if(is.na(cq_n2[i,1]) == TRUE){
         c5 <- append(c5, "neg")
-      }else if(cq_n2[i,1] < 40){
+      }else if(cq_n2[i,1] < as.numeric(input$minctbiorad)){
         c5 <- append(c5, "pos")
       }else{
         c5 <- append(c5, "neg")
@@ -865,6 +991,9 @@ server <- function(input, output) {
   
   
   
+  
+  
+  
   ################## APPLIED QUANT STUDIO ##################
   ##########################################################
   
@@ -1018,8 +1147,18 @@ server <- function(input, output) {
     res <- input$appl
     samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
     df <- data.frame(samples)
-    df <- df[-c(1:44),c(1,2,4,5,7,9)]
-    colnames(df) <- c("Well", "Well_Position","Sample", "Target","Fluor","Cq")
+    df <- df[-c(1:44),c(2,4,5,7,9)]
+    colnames(df) <- c("Well","ID", "Target","Fluor","Cq")
+    newwell <- vector()
+    for(i in df$Well){
+      if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+        stri_sub(i, 2, 1) <- 0
+        newwell <- append(newwell, i)
+      } else {
+        newwell <- append(newwell, i)
+      }
+    }
+    df$Well <- newwell
     return(df)
   }
   
@@ -1030,36 +1169,34 @@ server <- function(input, output) {
   ################## Cq Plate Tab: Applied ##################
   cqPlateApp <- function(){
     inp <- readAppliedResults()
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$Cq[s:e]
-      s <- s + 24
-      e <- e + 24
+    r <- vector()
+    c <- vector()
+    for (i in inp$Well){
+        r <- append(r,str_sub(i,1,1))
+        c <- append(c, str_sub(i,-1))
     }
-    dt <- dt %>% 
-      mutate_if(is.numeric, round, digits = 3)
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- inp$Cq[i]
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny
   printCqPlateApp <- function(){
     dt <- cqPlateApp()
-    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:8,
-        backgroundColor = "yellow"
-      ) %>%
-      formatStyle(
-        columns = 9:16,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 17:24,
-        backgroundColor = "lightblue")
-    return(f)
+    defdt <- datatable(dt, rownames = T, options = list(pageLength = 20))%>%
+      formatRound(columns = c(1:ncol(dt)), digits = 3)
+    return(defdt)
   }
   
   output$cqplateapp<- renderDataTable(
@@ -1069,34 +1206,34 @@ server <- function(input, output) {
   ################## Sample Plate Tab: Applied ##########################
   samplePlateApp <- function(){
     inp <- readAppliedResults()
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$Sample[s:e]
-      s <- s + 24
-      e <- e + 24
+    inp$ID <- as.character(inp$ID)
+    r <- vector()
+    c <- vector()
+    for (i in inp$Well){
+      r <- append(r,str_sub(i,1,1))
+      c <- append(c, str_sub(i,-2))
     }
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- as.character(inp$ID[i])
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny
   printSamplePlateApp <- function(){
     dt <- samplePlateApp()
     defdt <- datatable(dt, rownames = F,  options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:8,
-        backgroundColor = "yellow"
-      ) %>%
-      formatStyle(
-        columns = 9:16,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 17:24,
-        backgroundColor = "lightblue")
-    return(f)
+    return(defdt)
   }
   
   output$sampleplateapp<- renderDataTable(
@@ -1720,6 +1857,9 @@ server <- function(input, output) {
   
   
   
+  
+  
+  
   ################## TAQMAN ##################
   ############################################
   
@@ -2106,6 +2246,9 @@ server <- function(input, output) {
   
   
   
+  
+  
+  
   ################## SYBR ##################
   ##########################################
   
@@ -2121,6 +2264,7 @@ server <- function(input, output) {
         tbl_list <- lapply(res$datapath, read.csv)
         tmp <- as.data.frame(tbl_list[1]) %>%
           select(Well, Fluor, Target, Content,Sample, Cq)
+        colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
         tbl_list[[1]] <- tmp
         
       } else if (grepl("xlsx", res$datapath[[1]][1]) == TRUE){
@@ -2129,7 +2273,7 @@ server <- function(input, output) {
         df <- as.data.frame(dat)
         df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
         df <- as.data.frame(df)
-        colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+        colnames(df) <- c("Well", "Fluor", "Target", "Content","ID", "Cq")
         
         ## Read Run Information
         run <- read_xlsx(res$datapath, sheet = "Run Information")
@@ -2193,41 +2337,35 @@ server <- function(input, output) {
   ################## Cq Plate Tab: SYBR ##############
   cqPlateSYBR <- function(){
     inp <- readSYBR()[[1]]
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$Cq[s:e]
-      s <- s + 24
-      e <- e + 24
+    r <- vector()
+    c <- vector()
+    newwell <- vector()
+    for (i in inp$Well){
+      r <- append(r,str_sub(i,1,1))
+      c <- append(c, str_sub(i,-2))
     }
-    dt <- dt %>% 
-      mutate_if(is.numeric, round, digits = 3)
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- inp$Cq[i]
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny
   printCqPlateSYBR <- function(){
     dt <- cqPlateSYBR()
-    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:6,
-        backgroundColor = "lightgreen"
-      ) %>%
-      formatStyle(
-        columns = 7:12,
-        backgroundColor = "pink"
-      ) %>%
-      formatStyle(
-        columns = 13:18,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 19:24,
-        backgroundColor = "lightblue"
-      )
-    return(f)
+    defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))%>%
+      formatRound(columns = c(1:ncol(dt)), digits = 3)
+    return(defdt)
   }
   
   #### Render Table in App ### 
@@ -2238,39 +2376,34 @@ server <- function(input, output) {
   ################## Sample Plate Tab: SYBR ############################
   samplePlateSYBR <- function(){
     inp <- readSYBR()[[1]]
-    dt <- data.frame(matrix(nrow = 16, ncol = 24))
-    s <- 1
-    e <- 24
-    for (i in 1:16){
-      dt[i,] <- inp$Sample[s:e]
-      s <- s + 24
-      e <- e + 24
+    inp$ID <- as.character(inp$ID)
+    r <- vector()
+    c <- vector()
+    for (i in inp$Well){
+      r <- append(r,str_sub(i,1,1))
+      c <- append(c, str_sub(i,-2))
     }
-    return(dt)
+    r <-unique(r)
+    c <- unique(c)
+    nrows <- length(r)
+    ncols <- length(c)
+    
+    df <- data.frame(matrix(nrow = nrows, ncol = ncols))
+    colnames(df) <- c(1:ncols)
+    rownames(df) <- r
+    for (i in 1:length(inp$Well)){
+      ro <- str_sub(inp$Well[i],1,1)
+      col <- as.numeric(str_sub(inp$Well[i],-2))
+      df[ro,col] <- as.character(inp$ID[i])
+    }
+    return(df)
   }
   
   ## Convert to datatable to render nicely in shiny ##
   printSamplePlateSYBR <- function(){
     dt <- samplePlateSYBR()
     defdt <- datatable(dt, rownames = F, options = list(pageLength = 20))
-    f <- defdt %>% 
-      formatStyle(
-        columns = 1:6,
-        backgroundColor = "lightgreen"
-      ) %>%
-      formatStyle(
-        columns = 7:12,
-        backgroundColor = "pink"
-      ) %>%
-      formatStyle(
-        columns = 13:18,
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = 19:24,
-        backgroundColor = "lightblue"
-      )
-    return(f)
+    return(defdt)
   }
   
   ###### Render Table in App 
@@ -2824,6 +2957,9 @@ server <- function(input, output) {
   output$IDRESsybr <- renderTable(
     idresultSYBR()
   )
+  
+  
+  
   
   
   

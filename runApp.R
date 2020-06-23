@@ -3,7 +3,7 @@
 
 ########### runApp.R #################
 ## 0) Move to your working directory
-setwd("/home/sonia/Documentos/Covid19/shiny-app/complete-app/")
+setwd("/home/sonia/Documentos/Covid19/shiny-app/")
 
 ## 1) First specify the packages of interest
 packages = c("shiny", "data.table", "qpcR","reshape2","cowplot","rlist","DT", 
@@ -22,8 +22,8 @@ package.check <- lapply(
 )
 
 ## 3) Load the ui and server functions (here you have to change the path for your computer)
-source("/home/sonia/Documentos/Covid19/shiny-app/complete-app/ui.R")
-source("/home/sonia/Documentos/Covid19/shiny-app/complete-app/server.R")
+source("/home/sonia/Documentos/Covid19/shiny-app/ui.R")
+source("/home/sonia/Documentos/Covid19/shiny-app/server.R")
 
 ## 4) Call app (store app in variable)
 app <- shinyApp(ui = ui, server = server)
