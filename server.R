@@ -74,6 +74,7 @@ server <- function(input, output) {
       }
       tmp$Well <- newwell
       colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+      tmp$Cq <- format(tmp$Cq, digits = 4)
       
       tbl_list[[1]] <- tmp
       
@@ -96,6 +97,7 @@ server <- function(input, output) {
       }
       df$Well <- newwell
       colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+      df$Cq <- format(df$Cq, digits = 4)
       
       ## Read Run Information
       run <- read_xlsx(res$datapath, sheet = "Run Information")
@@ -354,7 +356,7 @@ server <- function(input, output) {
           if (!is.na(tmp_s[1])){
             a[tmp_s[2],paste(unique(tmp$Target),"(Dup1)",sep="")] <- tmp$Cq[1]
             a[tmp_s[2],paste(unique(tmp$Target),"(Dup2)",sep="")] <- tmp$Cq[2]
-            a[tmp_s[2],paste(unique(tmp$Target),"(Avg)",sep="")] <- mean(a[tmp_s[2],paste(unique(tmp$Target),"(Dup1)",sep="")], a[tmp_s[2],paste(unique(tmp$Target),"(Dup2)",sep="")], na.rm = TRUE)
+            a[tmp_s[2],paste(unique(tmp$Target),"(Avg)",sep="")] <- mean(c(a[tmp_s[2],paste(unique(tmp$Target),"(Dup1)",sep="")],a[tmp_s[2],paste(unique(tmp$Target),"(Dup2)",sep="")]), na.rm = TRUE)
           }
         }
       }
@@ -367,7 +369,7 @@ server <- function(input, output) {
       negc$Cq <- as.numeric(negc$Cq)
       a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")] <- negc$Cq[1]
       a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")] <- negc$Cq[2]
-      a["C(-)", paste(unique(negc$Target),"(Avg)",sep="")] <- mean(a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")],a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")])
+      a["C(-)", paste(unique(negc$Target),"(Avg)",sep="")] <- mean(c(a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")],a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")]), na.rm = TRUE)
       
       ## NTC
       ntc <- lapply(ctrls_sp, function(x){
@@ -395,22 +397,32 @@ server <- function(input, output) {
       d <- data.frame()
       coefficients <- sapply(avgs_cp, function(x){
         model <- lm(cp ~ x, avgs_cp)
-        #print(model$coefficients)
         coeff1 <- as.numeric(model$coefficients[1])
-        #print(coeff1)
         coeff2 <- as.numeric(model$coefficients[2])
-        #print(coeffs2)
         coeffs <- as.data.frame(cbind(coeff1, coeff2))
-        #colnames(coeffs) <-c("Intercept", "Slope")
       })
       rownames(coefficients) <- c("Intercept", "Slope")
-      #####
       
-      
+      ##### LogCopies and Copies
+      for (i in 1:nrow(a)){
+        for (j in 1:length(avgs)){
+          if(is.na(avgs[i,j]) == TRUE){
+            a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
+          } else {
+            a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
+          }
+          if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
+            a[i, paste(genes[j],"(Copies)", sep="")] <- NA
+          } else{
+            a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
+          }
+        }
+      }
+      return(a)
       
       ## If user has no duplicates
     } else if (input$dupsbiorad == FALSE){
-      a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 4+length(genes)+length(genes)*3))
+      a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+length(genes)+length(genes)*3))
       #Prepare colnames
       colnames(a)[1:3] <- c("Dilution","Copies","log(Copies)")
       l <- lapply(genes, function(x){
@@ -419,86 +431,6 @@ server <- function(input, output) {
       l <- unlist(l)
       colnames(a)[5:ncol(a)] <- l
     }
-    
-    
-    
-    'a <- data.frame(matrix(0, nrow = 6, ncol = 19))
-    colnames(a)<-c("Sample","Dilution","Copies","log(copies)","gen1_dup1","gen2_dup1","gen3_dup1","gen1_dup2","gen2_dup2","gen3_dup2","gen1_avg","gen2_avg","gen3_avg","gen1_logcop","gen2_logcop","gen3_logcop", "gen1_copies", "gen2_copies", "gen3_copies")
-    a$Sample <- c("NTC","C(-)","C(+)10-2","C(+)10-3","C(+)10-4","C(+)10-5")
-    a$Dilution <- c("-","-",100,1000,10000,100000)
-    a$Copies <- c("-","-",200000*2/as.numeric(a$Dilution[3]), 200000*2/as.numeric(a$Dilution[4]),200000*2/as.numeric(a$Dilution[5]),200000*2/as.numeric(a$Dilution[6]))
-    a$`log(copies)`<- c("-","-", 3.602, 2.602,1.602, 0.602)
-    
-    cq <- cqPlate()
-    a$gen1_dup1 <- as.numeric(c(cq[7,8],NA,cq[15,8],cq[13,8], cq[11,8], cq[9,8]))
-    a$gen2_dup1 <- as.numeric(c(cq[7,16],NA,cq[15,16],cq[13,16], cq[11,16], cq[9,16]))
-    a$gen3_dup1 <- as.numeric(c(cq[7,24],cq[15,24],NA,NA,NA,NA))
-    a$gen1_dup2 <- as.numeric(c(cq[8,8],NA,cq[16,8],cq[14,8], cq[12,8], cq[10,8]))
-    a$gen2_dup2 <- as.numeric(c(cq[8,16],NA,cq[16,16],cq[14,16], cq[12,16], cq[10,16]))
-    a$gen3_dup2 <- as.numeric(c(cq[8,24],cq[16,24],NA,NA,NA, NA))
-    a$gen1_avg <- c(NA,NA,mean(c(a$gen1_dup1[3], a$gen1_dup2[3]), na.rm = T), mean(c(a$gen1_dup1[4], a$gen1_dup2[4]), na.rm = T), mean(c(a$gen1_dup1[5], a$gen1_dup2[5]), na.rm = T), mean(c(a$gen1_dup1[6], a$gen1_dup2[6]), na.rm = T))
-    a$gen2_avg <- c(NA,NA,mean(c(a$gen2_dup1[3], a$gen2_dup2[3]), na.rm = T), mean(c(a$gen2_dup1[4], a$gen2_dup2[4]), na.rm = T), mean(c(a$gen2_dup1[5], a$gen2_dup2[5]), na.rm = T),mean(c(a$gen2_dup1[6], a$gen2_dup2[6]), na.rm = T))
-    a$gen3_avg <- c(mean(c(a$gen3_dup1[1], a$gen3_dup2[1]), na.rm = T),mean(c(a$gen3_dup1[2], a$gen3_dup2[2]), na.rm = T),NA,NA,NA,NA)
-    
-    ################### Coefficients ####################
-    gen1 <- a$gen1_avg[3:6]
-    gen2 <- a$gen2_avg[3:6]
-    cp <- a$`log(copies)`[3:6]
-    p <- as.data.frame(cbind(as.numeric(gen1),as.numeric(gen2) , as.numeric(cp)))
-    colnames(p) <- c("gen1", "gen2", "cp")
-    
-    model_gen1 <- lm(cp ~ gen1, p)
-    gen1_coeff1 <- as.numeric(model_gen1$coefficients[1])
-    gen1_coeff2 <- as.numeric(model_gen1$coefficients[2])
-    gen1_coeff <- as.data.frame(cbind(gen1_coeff1, gen1_coeff2))
-    colnames(gen1_coeff) <- c("Intercept", "Slope")
-    
-    model_gen2 <- lm(cp ~ gen2, p)
-    gen2_coeff1 <- as.numeric(model_gen2$coefficients[1])
-    gen2_coeff2 <- as.numeric(model_gen2$coefficients[2])
-    gen2_coeff <- as.data.frame(cbind(gen2_coeff1, gen2_coeff2))
-    colnames(gen2_coeff) <- c("Intercept", "Slope")
-    
-    coeff <- as.data.frame(rbind(gen1_coeff, gen2_coeff))
-    rownames(coeff) <- c("gen1", "gen2")'
-    ############################################################### 
-    ## log(Copies) ##
-    for (i in 1:length(a$gen1_avg)){
-      if(is.na(a$gen1_avg[i])== TRUE){
-        a$gen1_logcop[i] <- NA
-      }else{
-        a$gen1_logcop[i] <- a$gen1_avg[i]*coeff[1,2]+coeff[1,1]
-      }
-      if(is.na(a$gen2_avg[i])== TRUE){
-        a$gen2_logcop[i] <- NA
-      }else{
-        a$gen2_logcop[i] <- a$gen2_avg[i]*coeff[2,2]+coeff[2,1]
-      }
-      if(is.na(a$gen3_avg[i])== TRUE){
-        a$gen3_logcop[i] <- NA
-      }else{
-        a$gen3_logcop[i] <- a$gen3_avg[i]*coeff[2,2]+coeff[2,1]
-      }
-    }
-    
-    ##### Copies #####
-    for (i in 1:length(a$gen1_logcop)){
-      if (is.na(a$gen1_logcop[i])){
-        a$gen1_copies[i] <- NA
-      }else{
-        a$gen1_copies[i] <-10^a$gen1_logcop[i]
-      }
-      if (is.na(a$gen2_logcop[i])){
-        a$gen2_copies[i] <- NA
-      }else{
-        a$gen2_copies[i] <-10^a$gen2_logcop[i]
-      }
-      if (is.na(a$gen3_logcop[i])){
-        a$gen3_copies[i] <- NA
-      }else{
-        a$gen3_copies[i] <-10^a$gen3_logcop[i]
-      }
-    }
     return(a)
   }
   
@@ -506,27 +438,12 @@ server <- function(input, output) {
   stCurveDT <- function(){
     a <- stCurve()
     ## Transform into data table
-    defdt <- datatable(a, rownames = F)
+    defdt <- datatable(a, rownames = TRUE)
     dt <- defdt %>%
-      formatStyle(
-        columns = c(5,8,11,14,17),
-        backgroundColor = "yellow"
-      )%>%
-      formatStyle(
-        columns = c(6,9,12,15,18),
-        backgroundColor = "orange"
-      ) %>%
-      formatStyle(
-        columns = c(7,10,13,16,19),
-        backgroundColor = "lightblue"
-      ) #%>%
-      #formatStyle(
-      #  columns = 7,
-      #  target = 'row',
-      #  backgroundColor = styleInterval(35, "tomato"),
-        #backgroundColor = styleInterval(35, c('white', 'tomato'))
-      #)
-    
+      formatRound(
+        columns = c(1:ncol(a)),
+        digits = 3
+      )
     return(dt)
   }
   
@@ -565,49 +482,35 @@ server <- function(input, output) {
   stdPlots <- function(){
     a <- stCurve()
     
-    gen11 <- a$gen1_avg[3:6]
-    gen22 <- a$gen2_avg[3:6]
-    cpp <- a$`log(copies)`[3:6]
+    ## Get copies column
+    cp <- a$logCopies
+    ## Get avgs column (only for not control genes)
+    avgs <- a[,grep("Avg", names(a))]
+    avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
+    avgs_def <- avgs[,avgs_genes]
+    ## Combine copies with avgs
+    avgs_cp <- cbind(avgs_def, cp)
+    avgs_cp <- avgs_cp[3:nrow(avgs_cp),]
     
-    pl1 <- as.data.frame(cbind(as.numeric(gen11),as.numeric(cpp)))
-    colnames(pl1) <- c("gen1", "cp")
-    pl1 <- pl1[complete.cases(pl1),]
+    doStdPlots <- function(gene){
+      
+      ggplot(avgs_cp, aes(x=gene, y = cp)) + 
+        geom_point()+
+        geom_smooth(method = lm, se = F) +
+        stat_poly_eq(formula = cp ~ gene,
+                     label.x.npc = "right", label.y.npc = "top",
+                     aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                     parse = TRUE) +
+        ggtitle(paste("Standard curve for",toupper("blab")))+
+        theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
+        xlab(paste("Dilutions",toupper("bla"))) +
+        ylab("log(Copies)")
+    }
     
-    pl2 <- as.data.frame(cbind(as.numeric(gen22),as.numeric(cpp)))
-    colnames(pl2) <- c("gen2", "cp")
-    pl2 <- pl2[complete.cases(pl2),]
-    
-    form1 <- pl1$cp ~ pl1$gen1
-    
-    p1 <- ggplot(pl1, aes(x=gen1, y = cp)) + 
-      geom_point()+
-      geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = form1,
-                   label.x.npc = "right", label.y.npc = "top",
-                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
-                   parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(pl1)[1])))+
-      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(pl1)[1]))) +
-      ylab("log(Copies)")
-    
-    form2 <- pl2$cp ~ pl2$gen2
-    
-    p2 <- ggplot(pl2, aes(x=gen2, y = cp)) + 
-      geom_point()+
-      geom_smooth(method = lm, se = F) +
-      stat_poly_eq(formula = form2, 
-                   label.x.npc = "right", label.y.npc = "top",
-                   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                   parse = TRUE) +
-      ggtitle(paste("Standard curve for",toupper(colnames(pl2)[1])))+
-      theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-      xlab(paste("Dilutions",toupper(colnames(pl2)[1]))) +
-      ylab("log(Copies)")
-    
-    s <- grid.arrange(p1, p2, nrow = 1)
-    return(s)
-    
+    p <- lapply(avgs_cp, doStdPlots)
+    p <- p[grep("cp", names(p), value = TRUE, invert = TRUE)]
+    do.call(grid.arrange, c(p, nrow = 1))
+
   }
   
   ##### Render Plots in App
@@ -983,6 +886,8 @@ server <- function(input, output) {
   output$IDRESULT <- renderTable(
     idresult()
   )
+  
+  
   
   
   
@@ -1860,6 +1765,8 @@ server <- function(input, output) {
   
   
   
+  
+  
   ################## TAQMAN ##################
   ############################################
   
@@ -2243,6 +2150,8 @@ server <- function(input, output) {
     geneList()[3]
   })'
 
+  
+  
   
   
   
@@ -2957,6 +2866,8 @@ server <- function(input, output) {
   output$IDRESsybr <- renderTable(
     idresultSYBR()
   )
+  
+  
   
   
   
