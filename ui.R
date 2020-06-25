@@ -13,10 +13,11 @@ ui <- fluidPage(
         textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
         numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4),
-        numericInput("minctbiorad", "Sample is considered POSITIVE with Ct below:", value = 40),
+        numericInput("minctbiorad", "Sample is considered POSITIVE with Ct below:", value = 35),
         numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
         radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
-        numericInput("posctrlbiorad", "How many POSITIVE CONTROLS are you using?", value = 4)
+        numericInput("posctrlbiorad", "How many POSITIVE CONTROLS are you using?", value = 4),
+        numericRangeInput("rangebiorad", "Enter range:", value = c(35,40))
       ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
       conditionalPanel(

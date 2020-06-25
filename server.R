@@ -99,6 +99,7 @@ server <- function(input, output) {
       colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
       df$Cq <- format(df$Cq, digits = 4)
       
+      
       ## Read Run Information
       run <- read_xlsx(res$datapath, sheet = "Run Information")
       df2 <- as.data.frame(run)
@@ -302,7 +303,7 @@ server <- function(input, output) {
     # Prepare data frame depending on nb of controls and duplicates
     nbctrls <- as.character(unique(ctrls$ID))
     
-    ## If user has duplicates
+    ## If user has duplicates (also using the # of positive controls that the users has specified to generate # of lines for table)
     if(input$dupsbiorad == TRUE){
       a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+(length(genes)*2)+length(genes)*3))
       
@@ -319,7 +320,6 @@ server <- function(input, output) {
       smp <- unlist(smp)
       smp <- as.character(unique(grep("10-", smp,value = TRUE)))
       smp <- smp[order(nchar(smp), smp)]
-      #a$Sample <-c("NTC", "C(-)", smp)
       rownames(a) <- c("NTC", "C(-)", smp)
       
       ## Dilution
@@ -378,7 +378,6 @@ server <- function(input, output) {
       
       for (i in 1:length(genes)){
         df <- ntc[grep(genes[i], ntc)]
-        #print(df)
         df <- as.data.frame(df)
         colnames(df) <- c("Well","Fluor","Target","Content","ID","Cq")
         df$Cq <- as.numeric(df$Cq)
@@ -455,6 +454,21 @@ server <- function(input, output) {
   ####### Coefficients function ########
   stdCoeffs <- function(){
     a <- stCurve()
+    cp <- a$logCopies
+    avgs <- a[,grep("Avg", names(a))]
+    avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
+    avgs_def <- avgs[,avgs_genes]
+    avgs_cp <- cbind(avgs_def, cp)
+    d <- data.frame()
+    coefficients <- sapply(avgs_cp, function(x){
+      model <- lm(cp ~ x, avgs_cp)
+      coeff1 <- as.numeric(model$coefficients[1])
+      coeff2 <- as.numeric(model$coefficients[2])
+      coeffs <- as.data.frame(cbind(coeff1, coeff2))
+    })
+    rownames(coefficients) <- c("Intercept", "Slope")
+    return(coefficients)
+    'a <- stCurve()
     gen1 <- a$gen1_avg[3:6]
     gen2 <- a$gen2_avg[3:6]
     cp <- a$`log(copies)`[3:6]
@@ -475,7 +489,7 @@ server <- function(input, output) {
     
     coeff <- as.data.frame(rbind(gen1_coeff, gen2_coeff))
     rownames(coeff) <- c("gen1", "gen2")
-    return(coeff)
+    return(coeff)'
   }
   
   ################## Standard Curve Tab (Plots): Biorad ##########################
@@ -493,7 +507,6 @@ server <- function(input, output) {
     avgs_cp <- avgs_cp[3:nrow(avgs_cp),]
     
     doStdPlots <- function(gene){
-      
       ggplot(avgs_cp, aes(x=gene, y = cp)) + 
         geom_point()+
         geom_smooth(method = lm, se = F) +
@@ -523,9 +536,122 @@ server <- function(input, output) {
     
     ## Real Id, Sample, Replicate columns
     a <- setupMultiC()
+    d <- readBiorad()[[1]]
+    genes <- readBiorad()[[3]]
+    d$Cq <- as.numeric(d$Cq)
+    d$ID <- as.character(d$ID)
+    
+    ## If user has duplicates, calculate mean Cq
+    if(input$dupsbiorad == TRUE){
+      
+      # Split by gene
+      d_g <- split(d, d$Target)
+      # Keep only df with genes names (if no value is given in ID, a new "empty" df is built)
+      d_g_clean <- list()
+      for (i in 1:length(genes)){
+        d_g_clean[i] <- d_g[grep(genes[i], names(d_g))]
+      }
+      
+      # Split by ID
+      # Check if Cq1/Cq2 is bigger than 1.5
+      # If not, calculate mean, else Unconclusive sample
+      mean_cq <- lapply(d_g_clean, function(x){
+        id <- split(x, x$ID)
+        byidmean <- lapply(id, function(y){
+          div <- abs(y$Cq[1]/y$Cq[2])
+          if (is.na(div) == TRUE){
+            byidmean <- NA
+          } else if (div > 1.5){
+            byidemean <- "Unconclusive sample"
+          } else {
+            byidemean <- mean(c(y$Cq[1], y$Cq[2]))
+          }
+        })
+        n <- names(byidmean)
+        byidmean <- cbind(n, as.data.frame(melt(as.character(byidmean))))
+      })
+      
+      for (i in 1:length(mean_cq)){
+        mean_cq[[i]] <- as.data.frame(mean_cq[[i]])
+        colnames(mean_cq[[i]]) <- c("ID", paste(genes[i],"(MeanCq)", sep=""))
+      }
+ 
+      # Remove controls and modify colnames
+      for (i in 1:length(mean_cq)){
+         mean_cq[[i]] <- mean_cq[[i]][grep("10-|NTC|negC|PosCtrl", mean_cq[[i]]$ID, invert = TRUE),]
+        colnames(mean_cq[[i]]) <- c("ID", paste(genes[i],"(MeanCq)", sep=""))
+      }
+      # Combine dataframes by ID
+      mean_cq_merged <- join_all(mean_cq, by="ID")
+      mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
+      
+      ## Log Copies
+      coeffs <- stdCoeffs()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in mean_cq_merged[,paste(studygenes[i],"(MeanCq)",sep = "")]){
+          if(is.na(j) == TRUE){
+            logcop <- append(logcop, NA)
+            cop <- append(cop, NA)
+          } else{
+            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(genes[i],"(Avg)",sep="")])
+            logcop <- append(logcop, lg)
+            cop <- append(cop, 10^lg)
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- as.numeric(logcop)
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- as.numeric(cop)
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
+      print(mean_cq_merged)
+      
+      ## Positive samples (< than minctbiorad) only for study genes
+      ## If mean unconclusive -> unconclusive
+      ## if mean na -> na
+      ## if value in range specified -> look copies 
+      for (i in studygenes){
+        l <- sapply(mean_cq_merged[,paste(i,"(MeanCq)",sep="")], function(x){
+          if(as.character(x) == "Unconclusive sample" & is.na(as.character(x)) == FALSE){
+            "Unconclusive"
+          } else if (is.na(as.numeric(paste(x))) == TRUE){
+            NA
+          } else if (as.numeric(paste(x)) < input$minctbiorad){
+            "pos"
+          } else if (as.numeric(paste(x)) > input$rangebiorad[1] & as.numeric(paste(x)) < input$rangebiorad[2]){
+            "Look copies"
+          }
+        })
+        mean_cq_merged[[paste(i,"MaxCt",sep="")]] <- l
+      }
+      
+      
+      'ct <- sapply(mean_cq_merged[,grep("MeanCq", colnames(mean_cq_merged))], function(x){
+        cts <- vector()
+        for (i in x){
+          if (is.na(as.numeric(i)) == TRUE){
+            cts <- append(cts,NA)
+          } else if(as.numeric(i) < as.numeric(input$minctbiorad)){
+            cts <- append(cts,"pos")
+          } else if (as.numeric(i) > input$rangebiorad[1] && as.numeric(i) < input$rangebiorad[2]){
+            cts <- append(cts,"Look copies")
+          }
+        }
+        #print(cts)
+      })'
+      
+      #print(ct)
+      #print(str(mean_cq_merged))
+      return(mean_cq_merged)
+    }
+  }
+      
     
     ## Well columns
-    wells_n1 <- vector()
+    'wells_n1 <- vector()
     for (n in 1:8){
       p <- rep(paste(LETTERS[1:16], n, sep=""))
       wells_n1 <- append(wells_n1, p)
@@ -732,12 +858,11 @@ server <- function(input, output) {
     
     final <- as.data.frame(cbind(a, wells_n1_def, wells_n2_def, wells_rnasep_def, cq_n1, cq_n2, cq_rnasep, lgcop_n1, lgcop_n2, cop_n1, cop_n2, c1,c2,c3,c4,c5,c6,c7,c8,c9, indv))
     return(final)
-  }
+  }'
   
   AnalysisSamplesDT <- function(){
     df <- AnalysisSamples()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
-    
     f <- defdt %>%
       formatStyle(
         columns = 1:3,
