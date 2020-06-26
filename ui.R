@@ -17,6 +17,7 @@ ui <- fluidPage(
         numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
         radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
         numericInput("posctrlbiorad", "How many POSITIVE CONTROLS are you using?", value = 4),
+        radioButtons("copiesforassig", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
         numericRangeInput("rangebiorad", "Enter range:", value = c(35,40))
       ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
