@@ -7,7 +7,7 @@ server <- function(input, output) {
   ############################################
   
   ################## Empty Plate Tab: Biorad #####################
-  platesTable <- function(cnames, controls){
+  'platesTable <- function(cnames, controls){
     col1 <- rep(1:8, each=2)
     col2 <- rep(9:16, each=2)
     col3 <- rep(17:24, each = 2)
@@ -47,7 +47,7 @@ server <- function(input, output) {
   
   output$plate <- renderDataTable(
     platePrint()
-  )
+  )'
   
   ################## Read "Run Information" and "Data" Sheet: Biorad ##########################
   # This function allows the user to upload either 1 Excel with 2 sheets (Data and Run Information)
@@ -57,68 +57,69 @@ server <- function(input, output) {
     res <- input$biorad
     tbl_list <- list()
     ## Read data from CSVs
-    if (grepl("csv",res$datapath[1]) == TRUE){
-      tbl_list <- lapply(res$datapath, read.csv)
-      tmp <- as.data.frame(tbl_list[1]) %>%
-        select(Well, Fluor, Target, Content,Sample, Cq)
-      colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
-      ## Correct A1 to A01, etc
-      newwell <- vector()
-      for (i in tmp$Well){
-        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
-          stri_sub(i, 2, 1) <- 0
-          newwell <- append(newwell, i)
-        } else {
-          newwell <- append(newwell, i)
+    if (!is.null(res)){
+      if (grepl("csv",res$datapath[1]) == TRUE){
+        tbl_list <- lapply(res$datapath, read.csv)
+        tmp <- as.data.frame(tbl_list[1]) %>%
+          select(Well, Fluor, Target, Content,Sample, Cq)
+        colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+        ## Correct A1 to A01, etc
+        newwell <- vector()
+        for (i in tmp$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
         }
-      }
-      tmp$Well <- newwell
-      colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
-      tmp$Cq <- format(tmp$Cq, digits = 4)
-      
-      tbl_list[[1]] <- tmp
-      
-      ## Read Data from 1 Excel
+        tmp$Well <- newwell
+        colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+        tmp$Cq <- format(tmp$Cq, digits = 4)
+        
+        tbl_list[[1]] <- tmp
+        
+        ## Read Data from 1 Excel
       } else if (grepl("xlsx", res$datapath[1]) == TRUE){
-      dat <- read_xlsx(res$datapath, sheet = "Data")
-      df <- as.data.frame(dat)
-      df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
-      df <- as.data.frame(df)
-      
-      ## Correct A1 to A01, etc
-      newwell <- vector()
-      for(i in df$Well){
-        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
-          stri_sub(i, 2, 1) <- 0
-          newwell <- append(newwell, i)
-        } else {
-          newwell <- append(newwell, i)
+        dat <- read_xlsx(res$datapath, sheet = "Data")
+        df <- as.data.frame(dat)
+        df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+        df <- as.data.frame(df)
+        
+        ## Correct A1 to A01, etc
+        newwell <- vector()
+        for(i in df$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
         }
+        df$Well <- newwell
+        colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
+        df$Cq <- format(df$Cq, digits = 4)
+        
+        
+        ## Read Run Information
+        run <- read_xlsx(res$datapath, sheet = "Run Information")
+        df2 <- as.data.frame(run)
+        ## Append to list
+        tbl_list[[1]] <- df
+        tbl_list[[2]] <- df2
       }
-      df$Well <- newwell
-      colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
-      df$Cq <- format(df$Cq, digits = 4)
+      ## Gene List
+      inp <- tbl_list[[1]]
+      genes <- unique(inp$Target)
+      genes <- as.character(genes)
+      genes[genes == ""] <- NA
+      genes <- as.character(na.exclude(genes))
       
+      # Add to list
+      tbl_list[[3]] <- genes
+      return(tbl_list)
+    }
       
-      ## Read Run Information
-      run <- read_xlsx(res$datapath, sheet = "Run Information")
-      df2 <- as.data.frame(run)
-      
-      ## Append to list
-      tbl_list[[1]] <- df
-      tbl_list[[2]] <- df2
-      }
-    
-    ## Gene List
-    inp <- tbl_list[[1]]
-    genes <- unique(inp$Target)
-    genes <- as.character(genes)
-    genes[genes == ""] <- NA
-    genes <- as.character(na.exclude(genes))
-    
-    # Add to list
-    tbl_list[[3]] <- genes
-    return(tbl_list)
   }
   
   output$BRruninfo <- renderTable(
@@ -407,11 +408,15 @@ server <- function(input, output) {
         for (j in 1:length(avgs)){
           if(is.na(avgs[i,j]) == TRUE){
             a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
+          } else if (avgs[i,j] == 0){
+            a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
           } else {
             a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
           }
           if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
             a[i, paste(genes[j],"(Copies)", sep="")] <- NA
+          } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
+            a[i, paste(genes[j],"(Copies)", sep="")] <- 0
           } else{
             a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
           }
@@ -425,7 +430,7 @@ server <- function(input, output) {
       #Prepare colnames
       colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
       l <- lapply(genes, function(x){
-        list(paste(x,"Ct",sep=""),paste(x,"(LogCopies)",sep=""),paste(x,"(Copies)",sep=""))
+        list(paste(x,"Cq",sep=""),paste(x,"(LogCopies)",sep=""),paste(x,"(Copies)",sep=""))
       })
       l <- unlist(l)
       colnames(a)[4:ncol(a)] <- l
@@ -469,7 +474,7 @@ server <- function(input, output) {
           tmp_s <- str_split(tmp$ID[1], "_")
           tmp_s <- unlist(tmp_s)
           if (!is.na(tmp_s[1])){
-            a[tmp_s[2],paste(unique(tmp$Target),"Ct",sep="")] <- tmp$Cq
+            a[tmp_s[2],paste(unique(tmp$Target),"Cq",sep="")] <- tmp$Cq
           }
         }
       }
@@ -480,7 +485,7 @@ server <- function(input, output) {
       colnames(control) <- c("Well","Fluor","Target","Content","ID","Cq")
       negc <- control[grep("negC", control$ID),]
       negc$Cq <- as.numeric(negc$Cq)
-      a["C(-)", paste(unique(negc$Target),"Ct", sep="")] <- negc$Cq
+      a["C(-)", paste(unique(negc$Target),"Cq", sep="")] <- negc$Cq
       
       ## NTC
       ntc <- lapply(ctrls_sp, function(x){
@@ -492,12 +497,12 @@ server <- function(input, output) {
         df <- as.data.frame(df)
         colnames(df) <- c("Well","Fluor","Target","Content","ID","Cq")
         df$Cq <- as.numeric(df$Cq)
-        a["NTC", paste(unique(df$Target),"Ct",sep = "")] <- df$Cq
+        a["NTC", paste(unique(df$Target),"Cq",sep = "")] <- df$Cq
       }
       
       ## Coefficients
       cp <- a$logCopies
-      avgs <- a[,grep("Ct", names(a))]
+      avgs <- a[,grep("Cq", names(a))]
       avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
       avgs_def <- avgs[,avgs_genes]
       
@@ -516,11 +521,15 @@ server <- function(input, output) {
         for (j in 1:length(avgs)){
           if(is.na(avgs[i,j]) == TRUE){
             a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
+          } else if (avgs[i,j] == 0){
+            a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
           } else {
             a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
           }
           if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
             a[i, paste(genes[j],"(Copies)", sep="")] <- NA
+          } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
+            a[i, paste(genes[j],"(Copies)", sep="")] <- 0
           } else{
             a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
           }
@@ -570,7 +579,7 @@ server <- function(input, output) {
       return(coefficients)
     } else if (input$dupsbiorad == FALSE){
       cp <- a$logCopies
-      avgs <- a[,grep("Ct", names(a))]
+      avgs <- a[,grep("Cq", names(a))]
       avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
       avgs_def <- avgs[,avgs_genes]
       avgs_cp <- cbind(avgs_def, cp)
@@ -590,6 +599,8 @@ server <- function(input, output) {
   ################## Standard Curve Tab (Plots): Biorad ##########################
   stdPlots <- function(){
     a <- stCurve()
+    g <- readBiorad()[[3]]
+    genes <- grep(input$endoC, g, value = TRUE,invert = TRUE)
     
     if(input$dupsbiorad == TRUE){
       ## Get copies column
@@ -602,7 +613,7 @@ server <- function(input, output) {
       avgs_cp <- cbind(avgs_def, cp)
       avgs_cp <- avgs_cp[3:nrow(avgs_cp),]
       
-      doStdPlots <- function(gene){
+      doStdPlots <- function(gene, nam){
         ggplot(avgs_cp, aes(x=gene, y = cp)) + 
           geom_point()+
           geom_smooth(method = lm, se = F) +
@@ -610,28 +621,27 @@ server <- function(input, output) {
                        label.x.npc = "right", label.y.npc = "top",
                        aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                        parse = TRUE) +
-          ggtitle(paste("Standard curve for",toupper("blab")))+
+          ggtitle(paste("Standard curve for",nam))+
           theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-          xlab(paste("Dilutions",toupper("bla"))) +
+          xlab(paste("Dilutions",nam)) +
           ylab("log(Copies)")
       }
       
-      p <- lapply(avgs_cp, doStdPlots)
-      p <- p[grep("cp", names(p), value = TRUE, invert = TRUE)]
-      do.call(grid.arrange, c(p, nrow = 1))
+      p <- map2(avgs_cp[grep("cp", names(avgs_cp), value = TRUE, invert = TRUE)], genes, doStdPlots)
+      ggarrange(plotlist = p, nrow = 1)
       
     } else if (input$dupsbiorad == FALSE){
       ## Get copies column
       cp <- a$logCopies
       ## Get avgs column (only for not control genes)
-      avgs <- a[,grep("Ct", names(a))]
+      avgs <- a[,grep("Cq", names(a))]
       avgs_genes <- grep(input$endocbiorad, names(avgs), value = TRUE, invert = TRUE)
       avgs_def <- avgs[,avgs_genes]
       ## Combine copies with avgs
       avgs_cp <- cbind(avgs_def, cp)
       avgs_cp <- avgs_cp[3:nrow(avgs_cp),]
       
-      doStdPlots <- function(gene){
+      doStdPlots <- function(gene, nam){
         ggplot(avgs_cp, aes(x=gene, y = cp)) + 
           geom_point()+
           geom_smooth(method = lm, se = F) +
@@ -639,15 +649,14 @@ server <- function(input, output) {
                        label.x.npc = "right", label.y.npc = "top",
                        aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                        parse = TRUE) +
-          ggtitle(paste("Standard curve for",toupper("blab")))+
+          ggtitle(paste("Standard curve for",nam))+
           theme(plot.title = element_text(hjust = 0.5, face = "bold"))+
-          xlab(paste("Dilutions",toupper("bla"))) +
+          xlab(paste("Dilutions",nam)) +
           ylab("log(Copies)")
       }
       
-      p <- lapply(avgs_cp, doStdPlots)
-      p <- p[grep("cp", names(p), value = TRUE, invert = TRUE)]
-      do.call(grid.arrange, c(p, nrow = 1))
+      p <- map2(avgs_cp[grep("cp", names(avgs_cp), value = TRUE, invert = TRUE)], genes, doStdPlots)
+      ggarrange(plotlist = p, nrow = 1)
     }
 
   }
@@ -661,11 +670,20 @@ server <- function(input, output) {
   AnalysisSamples <- function(){
     
     ## Real Id, Sample, Replicate columns
-    a <- setupMultiC()
     d <- readBiorad()[[1]]
     genes <- readBiorad()[[3]]
+    studygenes <- grep(input$endoC, genes, value = TRUE, invert = TRUE)
     d$Cq <- as.numeric(d$Cq)
     d$ID <- as.character(d$ID)
+    for (i in 1:length(d$Cq)){
+      if(d[i,"Target"] != "" & is.na.data.frame(d[i,"Cq"]) == TRUE){
+        d$Cq[i] <- 0
+      } else if (d[i,"Target"] == ""){
+        d$Cq[i] <- NA
+      } else{
+        next
+      }
+    }
     
     ## If user has duplicates, calculate mean Cq
     if(input$dupsbiorad == TRUE & input$copiesforassig == TRUE){
@@ -680,15 +698,27 @@ server <- function(input, output) {
       
       # Split by ID
       # Check if Cq1/Cq2 is bigger than 1.5
-      # If not, calculate mean, else Unconclusive sample
+      # If not, calculate mean, else Repeat sample
       mean_cq <- lapply(d_g_clean, function(x){
         id <- split(x, x$ID)
         byidmean <- lapply(id, function(y){
-          div <- abs(y$Cq[1]/y$Cq[2])
+          if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
+            div <- NA
+          } else {
+            div <- abs(y$Cq[1]/y$Cq[2])
+            if (is.na(div) == TRUE){
+              div <- 0
+            }
+          }
+          
           if (is.na(div) == TRUE){
             byidmean <- NA
           } else if (div > 1.5){
-            byidemean <- "Unconclusive"
+            byidemean <- "Repeat"
+          } else if (div < 0.5 & div > 0){
+            byidemean <- "Repeat"
+          } else if (div == 0){
+            byidmean <- 0
           } else {
             byidemean <- mean(c(y$Cq[1], y$Cq[2]))
           }
@@ -707,6 +737,7 @@ server <- function(input, output) {
          mean_cq[[i]] <- mean_cq[[i]][grep("10-|NTC|negC|PosCtrl", mean_cq[[i]]$ID, invert = TRUE),]
         colnames(mean_cq[[i]]) <- c("ID", paste(genes[i],"(MeanCq)", sep=""))
       }
+      
       # Combine dataframes by ID
       mean_cq_merged <- join_all(mean_cq, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
@@ -719,12 +750,15 @@ server <- function(input, output) {
         logcop <- vector()
         cop <- vector()
         for (j in mean_cq_merged[,paste(studygenes[i],"(MeanCq)",sep = "")]){
-          if (j == "Unconclusive"){
-            logcop <- append(logcop, "Unconclusive")
-            cop <- append(cop, "Unconclusive")
+          if (j == "Repeat"){
+            logcop <- append(logcop, "Repeat")
+            cop <- append(cop, "Repeat")
           } else if(is.na(j) == TRUE){
             logcop <- append(logcop, NA)
             cop <- append(cop, NA)
+          } else if(j == 0){
+            logcop <- append(logcop, 0)
+            cop <- append(cop, 0)
           } else {
             lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
             logcop <- append(logcop, lg)
@@ -738,42 +772,28 @@ server <- function(input, output) {
       mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## Positive samples (< than minctbiorad) only for study genes
-      ## If mean unconclusive -> unconclusive
+      ## If mean Repeat -> Repeat
       ## if mean na -> na
       ## if value in range specified -> look copies 
       for (i in studygenes){
         l <- sapply(mean_cq_merged[,paste(i,"(MeanCq)",sep="")], function(x){
-          if(as.character(x) == "Unconclusive" & is.na(as.character(x)) == FALSE){
-            "Unconclusive"
+          if(as.character(x) == "Repeat" & is.na(as.character(x)) == FALSE){
+            "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad){
+          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) > input$rangebiorad[1] & as.numeric(paste(x)) < input$rangebiorad[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangebiorad[2]){
             "Negative"
+          } else if (as.numeric(paste(x)) == 0){
+            "Negative"
           }
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
-      
-      ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
-      for (i in studygenes){
-        l <- sapply(mean_cq_merged[,paste(i,"(Copies)",sep="")], function(x){
-          if(as.character(x) == "Unconclusive" & is.na(as.character(x)) == FALSE){
-            "Unconclusive"
-          } else if (is.na(as.numeric(paste(x))) == TRUE){
-            NA
-          } else if (as.numeric(paste(x)) > input$mincnvbiorad){
-            "Positive"
-          } else if (as.numeric(paste(x)) < input$mincnvbiorad){
-            "Negative"
-          }
-        })
-        mean_cq_merged[[paste("CopyCheck:",i, sep="")]] <- l
-      }
-      
+
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -782,36 +802,20 @@ server <- function(input, output) {
         if (all(is.na(ctchecks[i,])) == TRUE){
           ctassig <- append(ctassig, NA)
         } else if (all(is.na(ctchecks[i,])) == FALSE){
-          if (all(grepl("Check copy number", ctchecks[i,])) == TRUE){
+          if (any(grepl("Check copy number", ctchecks[i,])) == TRUE){
             ctassig <- append(ctassig, "Check copy number")
-          } else if (any(grepl("Check copy number", ctchecks[i,])) == TRUE | all(grepl("Check copy number", ctchecks[i,]) == FALSE)){
-            
-            if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == FALSE){
-              ctassig <- append(ctassig, "Check copy number")
-              
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,]) == FALSE)){
-        
-              pos <- sum(str_count(ctchecks[i,], "Positive"),na.rm = TRUE)
-              if (pos >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Positive")
-              } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (neg >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (pos >= input$numposgenbiorad & neg < pos){
-                ctassig <- append(ctassig, "Positive")
-              } else if (neg > pos){
-                ctassig <- append(ctassig, "Negative")
-              }
+          } else if (any(grepl("Check copy number", ctchecks[i,]) == FALSE)){
+            pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
+            neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
+            unc <- sum(str_count(ctchecks[i,], "Repeat"), na.rm = TRUE)
+            if (as.numeric(unc) > as.numeric(pos) & as.numeric(unc) > as.numeric(neg)){
+              ctassig <- append(ctassig, "Repeat")
+            } else if(pos >= input$numposgenbiorad){
+              ctassig <- append(ctassig, "Positive")
+            } else if (pos < input$numposgenbiorad){
+              ctassig <- append(ctassig, "Negative")
+            } else if (neg > pos){
+              ctassig <- append(ctassig, "Negative")
             }
           }
         }
@@ -819,58 +823,59 @@ server <- function(input, output) {
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
       
-      ## Final assignation according to copy number
-      copychecks <- mean_cq_merged[,grep("CopyCheck", names(mean_cq_merged))]
-      copyassig <- vector()
-      for (i in 1:nrow(copychecks)){
-        if (all(is.na(copychecks[i,])) == TRUE){
-          copyassig <- append(copyassig, NA)
-        } else if (all(is.na(copychecks[i,])) == FALSE){
-          if (any(grepl("Positive", copychecks[i,])) == TRUE & any(grepl("Negative", copychecks[i,]) == FALSE)){
-              pos <- sum(str_count(copychecks[i,], "Positive"),na.rm = TRUE)
-              if (pos >= input$numposgenbiorad){
-                copyassig <- append(copyassig, "Positive")
-              } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-                copyassig <- append(copyassig, "Repeat")
-              }
-          }else if (any(grepl("Positive", copychecks[i,])) == FALSE & any(grepl("Negative", copychecks[i,])) == TRUE){
-              neg <- sum(str_count(copychecks[i,], "Negative"), na.rm = TRUE)
-              if (neg >= input$numposgenbiorad){
-                copyassig <- append(copyassig, "Negative")
-              } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-                copyassig <- append(copyassig, "Repeat")
-              }
-          }else if (any(grepl("Positive", copychecks[i,])) == TRUE & any(grepl("Negative", copychecks[i,])) == TRUE){
-              pos <- sum(str_count(copychecks[i,], "Positive"), na.rm = TRUE)
-              neg <- sum(str_count(copychecks[i,], "Negative"), na.rm = TRUE)
-              if (pos >= input$numposgenbiorad & neg < pos){
-                copyassig <- append(copyassig, "Positive")
-              } else if (neg > pos){
-                copyassig <- append(copyassig, "Negative")
-              }
+      ## CopyCheck:gene columns
+      ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
+      p <- as.data.frame(cbind(mean_cq_merged[,grep("FinalCtCheck|(Copies)", names(mean_cq_merged))]))
+      
+      for (i in studygenes){
+        l <- apply(p, MARGIN = 1, function(x){
+          if (x[["FinalCtCheck"]] == "Check copy number"){
+            if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
+              "Repeat"
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvbiorad){
+              "Positive"
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
+              "Negative"
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
             }
+          } else if (x[["FinalCtCheck"]] != "Check copy number"){
+            "-"
           }
+        })
+        mean_cq_merged[[paste("CopyCheck:",i, sep="")]] <- l
       }
+      
+      ## Final assignation according to copy number
+      copychecks <- mean_cq_merged[,grep("CopyCheck|FinalCtCheck", names(mean_cq_merged))]
+      
+      copyassig <- apply(copychecks, MARGIN = 1, function(x){
+        if (x[["FinalCtCheck"]] == "Check copy number"){
+          cc <- x[grep("CopyCheck", names(x))]
+          pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
+          neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
+          if (pos >= input$numposgenbiorad & pos >= neg){
+            "Positive"
+          } else if (pos < input$numposgenbiorad){
+            "Negative"
+          } else if (neg > pos){
+            "Negative"
+          }
+        } else if (x[["FinalCtCheck"]] != "Check copy number"){
+          "-"
+        }
+      })
       mean_cq_merged[["FinalCopyCheck"]] <- copyassig
       
-      ## Final check
+      ## Assignment
       final <- mean_cq_merged[,grep("Final", names(mean_cq_merged))]
-      finalassig <- vector()
-      for (i in 1:nrow(final)){
-        if (all(is.na(final[i,])) == TRUE){
-          finalassig <- append(finalassig, NA)
-        } else if (all(is.na(final[i,])) == FALSE){
-          if (all(grepl("Positive", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Positive")
-          } else if (all(grepl("Negative", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Negative")
-          } else if (any(grepl("Check copy number", final[i,])) == TRUE){
-            finalassig <- append(finalassig, final[i,"FinalCopyCheck"])
-          } else if (any(grepl("Positive", final[i,])) == TRUE & any(grepl("Negative", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Repeat")
-          }
+      finalassig <- apply(final, MARGIN = 1, function(x){
+        if(x[["FinalCtCheck"]] != "Check copy number"){
+          x[["FinalCtCheck"]]
+        } else if (x[["FinalCtCheck"]] == "Check copy number"){
+          x[["FinalCopyCheck"]]
         }
-      }
+      })
         
     mean_cq_merged[["Assignment"]] <- finalassig
     return(mean_cq_merged)
@@ -884,17 +889,17 @@ server <- function(input, output) {
         d_g_clean[i] <- d_g[grep(genes[i], names(d_g))]
       }
       
-      # Remove controls and modify colnames
+      
       for (i in 1:length(d_g_clean)){
         d_g_clean[[i]] <- as.data.frame(cbind(d_g_clean[[i]]$ID, d_g_clean[[i]]$Cq))
-        colnames(d_g_clean[[i]]) <- c("ID","Cq")
+        colnames(d_g_clean[[i]]) <- c("ID", "Cq")
       }
       
       for (i in 1:length(d_g_clean)){
         d_g_clean[[i]] <- d_g_clean[[i]][grep("10-|NTC|negC|PosCtrl", d_g_clean[[i]]$ID, value = TRUE ,invert = TRUE),]
         colnames(d_g_clean[[i]]) <- c("ID", paste(genes[i],"(Cq)", sep=""))
       }
-
+      
       # Combine dataframes by ID
       mean_cq_merged <- join_all(d_g_clean, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
@@ -907,11 +912,17 @@ server <- function(input, output) {
         logcop <- vector()
         cop <- vector()
         for (j in mean_cq_merged[,paste(studygenes[i],"(Cq)",sep = "")]){
-          if(is.na(j) == TRUE){
+          if (j == "Repeat"){
+            logcop <- append(logcop, "Repeat")
+            cop <- append(cop, "Repeat")
+          } else if(is.na(j) == TRUE){
             logcop <- append(logcop, NA)
             cop <- append(cop, NA)
+          } else if(j == 0){
+            logcop <- append(logcop, 0)
+            cop <- append(cop, 0)
           } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"Ct",sep="")])+unlist(coeffs[1,paste(studygenes[i],"Ct",sep="")])
+            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"Cq",sep="")])+unlist(coeffs[1,paste(studygenes[i],"Cq",sep="")])
             logcop <- append(logcop, lg)
             cop <- append(cop, 10^lg)
           }
@@ -923,36 +934,26 @@ server <- function(input, output) {
       mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## Positive samples (< than minctbiorad) only for study genes
-      ## If mean unconclusive -> unconclusive
+      ## If mean Repeat -> Repeat
       ## if mean na -> na
       ## if value in range specified -> look copies 
       for (i in studygenes){
         l <- sapply(mean_cq_merged[,paste(i,"(Cq)",sep="")], function(x){
-          if (is.na(as.numeric(paste(x))) == TRUE){
+          if(as.character(x) == "Repeat" & is.na(as.character(x)) == FALSE){
+            "Repeat"
+          } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad){
+          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) > input$rangebiorad[1] & as.numeric(paste(x)) < input$rangebiorad[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangebiorad[2]){
             "Negative"
-          }
-        })
-        mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
-      }
-      
-      ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
-      for (i in studygenes){
-        l <- sapply(mean_cq_merged[,paste(i,"(Copies)",sep="")], function(x){
-          if (is.na(as.numeric(paste(x))) == TRUE){
-            NA
-          } else if (as.numeric(paste(x)) > input$mincnvbiorad){
-            "Positive"
-          } else if (as.numeric(paste(x)) < input$mincnvbiorad){
+          } else if (as.numeric(paste(x)) == 0){
             "Negative"
           }
         })
-        mean_cq_merged[[paste("CopyCheck:",i, sep="")]] <- l
+        mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
       ## Final assignation according to Ct checks
@@ -963,36 +964,20 @@ server <- function(input, output) {
         if (all(is.na(ctchecks[i,])) == TRUE){
           ctassig <- append(ctassig, NA)
         } else if (all(is.na(ctchecks[i,])) == FALSE){
-          if (all(grepl("Check copy number", ctchecks[i,])) == TRUE){
+          if (any(grepl("Check copy number", ctchecks[i,])) == TRUE){
             ctassig <- append(ctassig, "Check copy number")
-          } else if (any(grepl("Check copy number", ctchecks[i,])) == TRUE | all(grepl("Check copy number", ctchecks[i,]) == FALSE)){
-            
-            if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == FALSE){
-              ctassig <- append(ctassig, "Check copy number")
-              
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,]) == FALSE)){
-              
-              pos <- sum(str_count(ctchecks[i,], "Positive"),na.rm = TRUE)
-              if (pos >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Positive")
-              } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (neg >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (pos >= input$numposgenbiorad & neg < pos){
-                ctassig <- append(ctassig, "Positive")
-              } else if (neg > pos){
-                ctassig <- append(ctassig, "Negative")
-              }
+          } else if (any(grepl("Check copy number", ctchecks[i,]) == FALSE)){
+            pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
+            neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
+            unc <- sum(str_count(ctchecks[i,], "Repeat"), na.rm = TRUE)
+            if (as.numeric(unc) > as.numeric(pos) & as.numeric(unc) > as.numeric(neg)){
+              ctassig <- append(ctassig, "Repeat")
+            } else if(pos >= input$numposgenbiorad){
+              ctassig <- append(ctassig, "Positive")
+            } else if (pos < input$numposgenbiorad){
+              ctassig <- append(ctassig, "Negative")
+            } else if (neg > pos){
+              ctassig <- append(ctassig, "Negative")
             }
           }
         }
@@ -1000,58 +985,59 @@ server <- function(input, output) {
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
       
-      ## Final assignation according to copy number
-      copychecks <- mean_cq_merged[,grep("CopyCheck", names(mean_cq_merged))]
-      copyassig <- vector()
-      for (i in 1:nrow(copychecks)){
-        if (all(is.na(copychecks[i,])) == TRUE){
-          copyassig <- append(copyassig, NA)
-        } else if (all(is.na(copychecks[i,])) == FALSE){
-          if (any(grepl("Positive", copychecks[i,])) == TRUE & any(grepl("Negative", copychecks[i,]) == FALSE)){
-            pos <- sum(str_count(copychecks[i,], "Positive"),na.rm = TRUE)
-            if (pos >= input$numposgenbiorad){
-              copyassig <- append(copyassig, "Positive")
-            } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-              copyassig <- append(copyassig, "Repeat")
+      ## CopyCheck:gene columns
+      ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
+      p <- as.data.frame(cbind(mean_cq_merged[,grep("FinalCtCheck|(Copies)", names(mean_cq_merged))]))
+      
+      for (i in studygenes){
+        l <- apply(p, MARGIN = 1, function(x){
+          if (x[["FinalCtCheck"]] == "Check copy number"){
+            if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
+              "Repeat"
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvbiorad){
+              "Positive"
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
+              "Negative"
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
             }
-          }else if (any(grepl("Positive", copychecks[i,])) == FALSE & any(grepl("Negative", copychecks[i,])) == TRUE){
-            neg <- sum(str_count(copychecks[i,], "Negative"), na.rm = TRUE)
-            if (neg >= input$numposgenbiorad){
-              copyassig <- append(copyassig, "Negative")
-            } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-              copyassig <- append(copyassig, "Repeat")
-            }
-          }else if (any(grepl("Positive", copychecks[i,])) == TRUE & any(grepl("Negative", copychecks[i,])) == TRUE){
-            pos <- sum(str_count(copychecks[i,], "Positive"), na.rm = TRUE)
-            neg <- sum(str_count(copychecks[i,], "Negative"), na.rm = TRUE)
-            if (pos >= input$numposgenbiorad & neg < pos){
-              copyassig <- append(copyassig, "Positive")
-            } else if (neg > pos){
-              copyassig <- append(copyassig, "Negative")
-            }
+          } else if (x[["FinalCtCheck"]] != "Check copy number"){
+            "-"
           }
-        }
+        })
+        mean_cq_merged[[paste("CopyCheck:",i, sep="")]] <- l
       }
+      
+      ## Final assignation according to copy number
+      copychecks <- mean_cq_merged[,grep("CopyCheck|FinalCtCheck", names(mean_cq_merged))]
+      
+      copyassig <- apply(copychecks, MARGIN = 1, function(x){
+        if (x[["FinalCtCheck"]] == "Check copy number"){
+          cc <- x[grep("CopyCheck", names(x))]
+          pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
+          neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
+          if (pos >= input$numposgenbiorad & pos >= neg){
+            "Positive"
+          } else if (pos < input$numposgenbiorad){
+            "Negative"
+          } else if (neg > pos){
+            "Negative"
+          }
+        } else if (x[["FinalCtCheck"]] != "Check copy number"){
+          "-"
+        }
+      })
       mean_cq_merged[["FinalCopyCheck"]] <- copyassig
       
-      ## Final check
+      ## Assignment
       final <- mean_cq_merged[,grep("Final", names(mean_cq_merged))]
-      finalassig <- vector()
-      for (i in 1:nrow(final)){
-        if (all(is.na(final[i,])) == TRUE){
-          finalassig <- append(finalassig, NA)
-        } else if (all(is.na(final[i,])) == FALSE){
-          if (all(grepl("Positive", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Positive")
-          } else if (all(grepl("Negative", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Negative")
-          } else if (any(grepl("Check copy number", final[i,])) == TRUE){
-            finalassig <- append(finalassig, final[i,"FinalCopyCheck"])
-          } else if (any(grepl("Positive", final[i,])) == TRUE & any(grepl("Negative", final[i,])) == TRUE){
-            finalassig <- append(finalassig, "Repeat")
-          }
+      finalassig <- apply(final, MARGIN = 1, function(x){
+        if(x[["FinalCtCheck"]] != "Check copy number"){
+          x[["FinalCtCheck"]]
+        } else if (x[["FinalCtCheck"]] == "Check copy number"){
+          x[["FinalCopyCheck"]]
         }
-      }
+      })
       
       mean_cq_merged[["Assignment"]] <- finalassig
       return(mean_cq_merged)
@@ -1067,15 +1053,27 @@ server <- function(input, output) {
       
       # Split by ID
       # Check if Cq1/Cq2 is bigger than 1.5
-      # If not, calculate mean, else Unconclusive sample
+      # If not, calculate mean, else Repeat sample
       mean_cq <- lapply(d_g_clean, function(x){
         id <- split(x, x$ID)
         byidmean <- lapply(id, function(y){
-          div <- abs(y$Cq[1]/y$Cq[2])
+          if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
+            div <- NA
+          } else {
+            div <- abs(y$Cq[1]/y$Cq[2])
+            if (is.na(div) == TRUE){
+              div <- 0
+            }
+          }
+          
           if (is.na(div) == TRUE){
             byidmean <- NA
           } else if (div > 1.5){
-            byidemean <- "Unconclusive"
+            byidemean <- "Repeat"
+          } else if (div < 0.5 & div > 0){
+            byidemean <- "Repeat"
+          } else if (div == 0){
+            byidmean <- 0
           } else {
             byidemean <- mean(c(y$Cq[1], y$Cq[2]))
           }
@@ -1094,24 +1092,25 @@ server <- function(input, output) {
         mean_cq[[i]] <- mean_cq[[i]][grep("10-|NTC|negC|PosCtrl", mean_cq[[i]]$ID, invert = TRUE),]
         colnames(mean_cq[[i]]) <- c("ID", paste(genes[i],"(MeanCq)", sep=""))
       }
+      
       # Combine dataframes by ID
       mean_cq_merged <- join_all(mean_cq, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## Positive samples (< than minctbiorad) only for study genes
-      ## If mean unconclusive -> unconclusive
+      ## If mean Repeat -> Repeat
       ## if mean na -> na
       ## if value in range specified -> look copies 
-      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
       for (i in studygenes){
         l <- sapply(mean_cq_merged[,paste(i,"(MeanCq)",sep="")], function(x){
-          if(as.character(x) == "Unconclusive" & is.na(as.character(x)) == FALSE){
-            "Unconclusive"
+          if(as.character(x) == "Repeat" & is.na(as.character(x)) == FALSE){
+            "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad){
+          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
+          } else if (as.numeric(paste(x)) == 0){
+            "Negative"
           } else if (as.numeric(paste(x)) > input$minctbiorad){
             "Negative"
           }
@@ -1119,45 +1118,31 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
-      ## Final assignation according to Ct checks
+      ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
       for (i in 1:nrow(ctchecks)){
-        # NAs
         if (all(is.na(ctchecks[i,])) == TRUE){
           ctassig <- append(ctassig, NA)
         } else if (all(is.na(ctchecks[i,])) == FALSE){
-          if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,]) == FALSE)){
-              pos <- sum(str_count(ctchecks[i,], "Positive"),na.rm = TRUE)
-              if (pos >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Positive")
-              } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-          } else if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (neg >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (pos >= input$numposgenbiorad & neg < pos){
-                ctassig <- append(ctassig, "Positive")
-              } else if (neg > pos){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg == pos){
-                ctassig <- append(ctassig, "You decide")
-              }
+            pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
+            neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
+            unc <- sum(str_count(ctchecks[i,], "Repeat"), na.rm = TRUE)
+            if (as.numeric(unc) > as.numeric(pos) & as.numeric(unc) > as.numeric(neg)){
+              ctassig <- append(ctassig, "Repeat")
+            } else if(pos >= input$numposgenbiorad){
+              ctassig <- append(ctassig, "Positive")
+            } else if (pos < input$numposgenbiorad){
+              ctassig <- append(ctassig, "Negative")
+            } else if (neg > pos){
+              ctassig <- append(ctassig, "Negative")
             }
+          }
         }
-      }
       
       mean_cq_merged[["Assignment"]] <- ctassig
+  
       return(mean_cq_merged)
-      
     } else if (input$dupsbiorad == FALSE & input$copiesforassig == FALSE){
       # Split by gene
       d_g <- split(d, d$Target)
@@ -1167,10 +1152,9 @@ server <- function(input, output) {
         d_g_clean[i] <- d_g[grep(genes[i], names(d_g))]
       }
       
-      # Remove controls and modify colnames
       for (i in 1:length(d_g_clean)){
         d_g_clean[[i]] <- as.data.frame(cbind(d_g_clean[[i]]$ID, d_g_clean[[i]]$Cq))
-        colnames(d_g_clean[[i]]) <- c("ID","Cq")
+        colnames(d_g_clean[[i]]) <- c("ID", "Cq")
       }
       
       for (i in 1:length(d_g_clean)){
@@ -1182,20 +1166,20 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(d_g_clean, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
-      
       ## Positive samples (< than minctbiorad) only for study genes
-      ## If mean unconclusive -> unconclusive
+      ## If mean Repeat -> Repeat
       ## if mean na -> na
-      ## if value in range specified -> look copies
-      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      ## if value in range specified -> look copies 
       for (i in studygenes){
         l <- sapply(mean_cq_merged[,paste(i,"(Cq)",sep="")], function(x){
-          if (is.na(as.numeric(paste(x))) == TRUE){
+          if(as.character(x) == "Repeat" & is.na(as.character(x)) == FALSE){
+            "Repeat"
+          } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad){
+          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
+          } else if (as.numeric(paste(x)) == 0){
+            "Negative"
           } else if (as.numeric(paste(x)) > input$minctbiorad){
             "Negative"
           }
@@ -1203,44 +1187,29 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
-      ## Final assignation according to Ct checks
+      ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
       for (i in 1:nrow(ctchecks)){
-        # NAs
         if (all(is.na(ctchecks[i,])) == TRUE){
           ctassig <- append(ctassig, NA)
         } else if (all(is.na(ctchecks[i,])) == FALSE){
-          if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,]) == FALSE)){
-              pos <- sum(str_count(ctchecks[i,], "Positive"),na.rm = TRUE)
-              if (pos >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Positive")
-              } else if (pos < input$numposgenbiorad & is.na(pos) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == FALSE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (neg >= input$numposgenbiorad){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg < input$numposgenbiorad & is.na(neg) == FALSE){
-                ctassig <- append(ctassig, "Repeat")
-              }
-            } else if (any(grepl("Positive", ctchecks[i,])) == TRUE & any(grepl("Negative", ctchecks[i,])) == TRUE){
-              pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
-              neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
-              if (pos >= input$numposgenbiorad & neg < pos){
-                ctassig <- append(ctassig, "Positive")
-              } else if (neg > pos){
-                ctassig <- append(ctassig, "Negative")
-              } else if (neg == pos){
-                ctassig <- append(ctassig, "You decide")
-              }
-            }
+          pos <- sum(str_count(ctchecks[i,], "Positive"), na.rm = TRUE)
+          neg <- sum(str_count(ctchecks[i,], "Negative"), na.rm = TRUE)
+          unc <- sum(str_count(ctchecks[i,], "Repeat"), na.rm = TRUE)
+          if (as.numeric(unc) > as.numeric(pos) & as.numeric(unc) > as.numeric(neg)){
+            ctassig <- append(ctassig, "Repeat")
+          } else if(pos >= input$numposgenbiorad){
+            ctassig <- append(ctassig, "Positive")
+          } else if (pos < input$numposgenbiorad){
+            ctassig <- append(ctassig, "Negative")
+          } else if (neg > pos){
+            ctassig <- append(ctassig, "Negative")
+          }
         }
       }
       
       mean_cq_merged[["Assignment"]] <- ctassig
-      
       return(mean_cq_merged)
     }
     
@@ -1249,90 +1218,31 @@ server <- function(input, output) {
   AnalysisSamplesDT <- function(){
     df <- AnalysisSamples()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
-    f <- defdt %>%
+    t <- defdt %>%
       formatStyle(
-        columns = 1:3,
-        backgroundColor = "lemonchiffon"
+        columns = grep("Final", names(df)),
+        backgroundColor = "khaki"
       ) %>%
       formatStyle(
-        columns = 4:6,
-        backgroundColor = "khaki"
-      )%>%
-      formatStyle(
-        columns = 7:9,
-        backgroundColor = "lemonchiffon"
-      )%>%
-      formatStyle(
-        columns = 10:11,
-        backgroundColor = "khaki"
-      )%>%
-      formatStyle(
-        columns = 12:13,
-        backgroundColor = "lemonchiffon"
+        columns = "Assignment",
+        backgroundColor = styleEqual(c("Positive", "Negative", "Repeat"), 
+                                     c("limegreen", "tomato", "lightblue")),
+        fontWeight = "bold"
+      ) %>%
+      formatRound(
+        columns = grep("Copies", names(df)),
+        digits = 3
       )
-    return(f)
+    
+    return(t)
   }
   
   output$analysis <- renderDataTable({
     AnalysisSamplesDT()
   })
   
-  ################## Interpretation Tab: Biorad #########################
-  interpretation <- function(){
-    an <- AnalysisSamples()
-    ID <- unique(an$Real_ID)
-    c10 <- vector()
-    s1 <- seq(from=1, to=117, by=2)
-    s2 <- seq(from=2, to=118, by=2)
-    for (i in 1:length(s1)){
-      if(an$indv[s1[i]] == an$indv[s2[i]]){
-        c10 <- append(c10, an$indv[s1[i]])
-      }else{
-        c10 <- append(c10, "Repeat")
-      }
-    }
-    c10 <- as.data.frame(c10)
-    c10[] <- lapply(c10, as.character)
-    ## Interpretation ##
-    interp <- vector()
-    for (i in c10[,1]){
-      if (i == "Calidad Insuficiente"){
-        interp = append(interp, "Repeat")
-      } else if (i == "Dudosa"){
-        interp = append(interp, "Repeat")
-      } else {
-        interp = append(interp, i)
-      }
-    }
-    
-    interp <- as.data.frame(interp)
-    interp[] <- lapply(interp, as.character)
-    final <- cbind(ID, c10, interp)
-    colnames(final) <- c("ID","", "Interpretation")
-    return(final)
-  }
-  
-  interpretationDT <- function(){
-    df <- interpretation()
-    defdt <- datatable(df, rownames = F, options = list(pageLength = 60))
-    
-    f <- defdt %>%
-      formatStyle(
-        columns = 3,
-        backgroundColor = styleEqual(c("Positive", "Negative", "Repeat", "Calidad Insuficiente"), 
-                                     c('seagreen', 'tomato', 'lightblue', "lemonchiffon"))
-      )
-    return(f)
-  }
-  
-  ##### Render in App
-  output$interpret <- renderDataTable(
-    interpretationDT()
-  )
-  
-  
   ################## ID Well Tab: Biorad ##############################
-  SamplesToKeep <- function(){
+  'SamplesToKeep <- function(){
     inp <- readBiorad()[[1]]
     g <- inp %>%
       group_by(ID)
@@ -1340,15 +1250,15 @@ server <- function(input, output) {
     g_sp <- group_split(g)
     tokeep <- vector()
     for (g in g_sp){
-      if(all(is.na(g$Cq)) == TRUE){
+      if(all(is.na(as.numeric(g$Cq))) == TRUE){
         next
       } else if (all(is.na(g$Cq)) == FALSE){
         tokeep <- append(tokeep, as.numeric(as.character(unique(g$ID))))
       } 
     }
-    tokeep <-na.exclude(tokeep)
+    tokeep <- na.exclude(tokeep)
     return(tokeep)
-  }
+  }'
 
   IDWELLtab <- function(){
     inp <- readBiorad()[[1]]
@@ -1357,9 +1267,9 @@ server <- function(input, output) {
     colnames(wellid) <- c("Well", "Target", "ID")
     
     ## Get list of samples to keep
-    tokeep <- SamplesToKeep()
+    #tokeep <- SamplesToKeep()
     ## Keep only samples from wellid df
-    wellid <- wellid[wellid$ID %in% tokeep,]
+    #wellid <- wellid[wellid$ID %in% tokeep,]
     return(wellid)
   }
   
@@ -1377,14 +1287,13 @@ server <- function(input, output) {
   ################## ID Result Tab: Biorad ###############################
   idresult <- function(){
     an <- AnalysisSamples()
-    int <- interpretation()
-    realid <- unique(as.numeric(as.character(an$Real_ID)))
-    idres <- as.data.frame(cbind(realid, int$Interpretation))
+    
+    id <-unique(as.numeric(as.character(an$ID)))
+    idres <- as.data.frame(cbind(id, an$Assignment))
     colnames(idres)<- c("ID", "Interpretation")
-    
-    tokeep <- SamplesToKeep()
-    idres <- idres[idres$ID %in% tokeep,]
-    
+    idres <- idres[which(is.na(idres$Interpretation) == FALSE),]
+    #Remove Repeat from ID_Result (might give problems with the curves)
+    #idres <- idres[grep("Repeat", idres$Interpretation, invert = TRUE),]
     return(idres)
   }
   
@@ -1397,6 +1306,11 @@ server <- function(input, output) {
   output$IDRESULT <- renderTable(
     idresult()
   )
+  
+  
+  
+  
+  
   
   
   
@@ -2278,6 +2192,9 @@ server <- function(input, output) {
   
   
   
+  
+  
+  
   ################## TAQMAN ##################
   ############################################
   
@@ -2661,6 +2578,9 @@ server <- function(input, output) {
     geneList()[3]
   })'
 
+  
+  
+  
   
   
   
@@ -3377,15 +3297,7 @@ server <- function(input, output) {
   output$IDRESsybr <- renderTable(
     idresultSYBR()
   )
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   
   
   ################### SYBR MELTING CURVE ANALYSIS ###################
@@ -3489,7 +3401,7 @@ server <- function(input, output) {
   })'
   
   ################## Melting Curve Plots: SYBR ##################
-  # Function to repeat temperature columns
+  # Function to Repeat temperature columns
   ## 5) Plot  TM curves
   # a) Define function
   rep.col<-function(x,n) {
@@ -3695,5 +3607,4 @@ server <- function(input, output) {
   )'
   
   
-          
 }

@@ -8,7 +8,7 @@ setwd("/home/sonia/Documentos/Covid19/shiny-app/")
 ## 1) First specify the packages of interest
 packages = c("shiny", "data.table", "qpcR","reshape2","cowplot","rlist","DT", 
              "readxl","plyr", "ggplot2","dplyr", "gridExtra","matrixStats",
-             "ggpmisc","outviz", "tidyverse", "tidyr", "janitor", "shinyWidgets")
+             "ggpmisc","outviz", "tidyverse", "tidyr", "janitor", "shinyWidgets", "ggpubr")
 
 ## 2) Now load or install&load all
 package.check <- lapply(

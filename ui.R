@@ -12,14 +12,14 @@ ui <- fluidPage(
                   multiple = TRUE),
         textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
-        numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4),
+        numericInput("posctrlbiorad", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
         numericInput("minctbiorad", "Sample is considered POSITIVE with Ct below:", value = 35),
-        numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
         radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
-        numericInput("posctrlbiorad", "How many POSITIVE CONTROLS are you using?", value = 4),
+        numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
         radioButtons("copiesforassig", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
-        numericRangeInput("rangebiorad", "Enter range:", value = c(35,40))
-      ),
+        numericRangeInput("rangebiorad", "Enter range:", value = c(35,40)),
+        numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
+        ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
       conditionalPanel(
         condition = "input.app == true",
@@ -70,16 +70,16 @@ ui <- fluidPage(
         tabsetPanel(
           id = "taqex",
           type = "tabs",
-          tabPanel("Empty Plate", dataTableOutput("plate")),
+          #tabPanel("Empty Plate", dataTableOutput("plate")),
           tabPanel("Raw Data", tableOutput("inputdf")),
           tabPanel("Run Information", tableOutput("BRruninfo")),
           tabPanel("Cq Plate", dataTableOutput("cqplate")),
           tabPanel("Sample Plate", dataTableOutput("sampleplate")),
-          tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
-          tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
+          #tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
+          #tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
           tabPanel("Standard Curve", fluidRow(dataTableOutput("stdcurve"), plotOutput("std"))),
           tabPanel("Analysis Samples", dataTableOutput("analysis")),
-          tabPanel("Interpretation", dataTableOutput("interpret")),
+          #tabPanel("Interpretation", dataTableOutput("interpret")),
           tabPanel("ID_Well", downloadButton("downIDWELL", "Download CSV"), tableOutput("IDWELL")),
           tabPanel("ID_Result",downloadButton("downidres", "Download CSV"), tableOutput("IDRESULT"))
         )
