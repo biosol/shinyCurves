@@ -17,15 +17,28 @@ ui <- fluidPage(
         radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
         numericInput("numposgenbiorad", "Number of positive genes to consider a sample POSITIVE", value = 1),
         radioButtons("copiesforassig", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
-        numericRangeInput("rangebiorad", "Enter range:", value = c(35,40)),
-        numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
+        conditionalPanel(condition = "input.copiesforassig == 'TRUE'",
+          numericRangeInput("rangebiorad", "Enter range:", value = c(35,40)),
+          numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
+          )
         ),
       checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
       conditionalPanel(
         condition = "input.app == true",
         fileInput("appl",
                   label = "Upload Applied Quant Studio xlsx",
-                  multiple = TRUE)
+                  multiple = TRUE),
+        textInput("endocapplied", "Endogenous control", value = "RNAseP"),
+        numericInput("maxendocapplied", "Maximum cycle number for endogenous control", value = 35),
+        numericInput("posctrlapplied", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("minctapplied", "Sample is considered POSITIVE with Ct below:", value = 35),
+        radioButtons("dupsapplied", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
+        numericInput("numposgenapplied", "Number of positive genes to consider a sample POSITIVE", value = 1),
+        radioButtons("copiesforassigapplied", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
+        conditionalPanel(condition = "input.copiesforassigapplied == 'TRUE'",
+                         numericRangeInput("rangeapplied", "Enter range:", value = c(35,40)),
+                         numericInput("mincnvapplied", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
+        )
       ),
       checkboxInput("taqman", "2) Analysis: Taqman Cq Curves"),
       conditionalPanel(
@@ -91,23 +104,16 @@ ui <- fluidPage(
           id = "blabla",
           type = "tabs",
           tabPanel("Raw Data", tableOutput("readapp")),
-          tabPanel("Conversion",
-                   tabsetPanel(
-                     tabPanel("Tranposed", tableOutput("trans")),
-                     tabPanel(title=uiOutput("gen1app"), downloadButton("downtransgen1", "Download CSV"), tableOutput("transgen1")),
-                     tabPanel(title=uiOutput("gen2app"), downloadButton("downtransgen2", "Download CSV"), tableOutput("transgen2")),
-                     tabPanel(title=uiOutput("gen3app"), downloadButton("downtransgen3", "Download CSV"), tableOutput("transgen3"))
-                   )
-          ),
+          tabPanel("Conversion", uiOutput("conversionapp")),
           tabPanel("Run Info", tableOutput("appliedruninfo")),
           tabPanel("Applied Results", tableOutput("appliedres")),
           tabPanel("Cq Plate", dataTableOutput("cqplateapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
-          tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
-          tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticapp")),
+          #tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
+          #tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticapp")),
           tabPanel("Std Curves", dataTableOutput("stdcurveapp"), plotOutput("stdapp")),
           tabPanel("Analysis Samples", dataTableOutput("analysisapp")),
-          tabPanel("Interpretation", dataTableOutput("interpretapp")),
+          #tabPanel("Interpretation", dataTableOutput("interpretapp")),
           tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp")),
           tabPanel("ID Result", downloadButton("downidresapp", "Download CSV"),tableOutput("IDRESULTApp"))
         )

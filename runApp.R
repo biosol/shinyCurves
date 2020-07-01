@@ -8,7 +8,8 @@ setwd("/home/sonia/Documentos/Covid19/shiny-app/")
 ## 1) First specify the packages of interest
 packages = c("shiny", "data.table", "qpcR","reshape2","cowplot","rlist","DT", 
              "readxl","plyr", "ggplot2","dplyr", "gridExtra","matrixStats",
-             "ggpmisc","outviz", "tidyverse", "tidyr", "janitor", "shinyWidgets", "ggpubr")
+             "ggpmisc","outviz", "tidyverse", "tidyr", "janitor", "shinyWidgets", 
+             "ggpubr", "stringi")
 
 ## 2) Now load or install&load all
 package.check <- lapply(
@@ -35,15 +36,8 @@ runApp()
 # https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0229330
 # SYBR
 'tabsetPanel(
-  tabPanel("N", fluidRow(downloadButton("downsybrN", "Download PDF"), plotOutput("sybrN", height = "1000px"))),
-  tabPanel("Rdrp",fluidRow(downloadButton("downsybrRdrp", "Download PDF"), plotOutput("sybrRdrp", height = "1000px"))),
-  tabPanel("Rpp30", fluidRow(downloadButton("downsybrRpp30", "Download PDF"), plotOutput("sybrRpp30", height = "1000px"))),
-  tabPanel("S", fluidRow(downloadButton("downsybrS", "Download PDF"), plotOutput("sybrS", height = "1000px")))
-),'
-
-#Taqman
-'tabsetPanel(
-  tabPanel(title=uiOutput("gen1"), fluidRow(uiOutput("downlgen1"), uiOutput("indetgen1"))), #downloadButton("downlgen1", "Download PDF"), plotOutput("indetgen1", height = "500px") 
-  tabPanel(title=uiOutput("gen2"), fluidRow(uiOutput("downlgen2"), uiOutput("indetgen2"))), #downloadButton("downlgen2", "Download PDF"), plotOutput("indetgen2", height = "500px")
-  tabPanel(title=uiOutput("gen3"), fluidRow(uiOutput("downlgen3"), uiOutput("indetgen3")))  #downloadButton("downlgen3", "Download PDF"), plotOutput("indetgen3", height = "500px")
-)'
+                     tabPanel("Tranposed", tableOutput("trans")),
+                     tabPanel(title=uiOutput("gen1app"), downloadButton("downtransgen1", "Download CSV"), tableOutput("transgen1")),
+                     tabPanel(title=uiOutput("gen2app"), downloadButton("downtransgen2", "Download CSV"), tableOutput("transgen2")),
+                     tabPanel(title=uiOutput("gen3app"), downloadButton("downtransgen3", "Download CSV"), tableOutput("transgen3"))
+                   )'
