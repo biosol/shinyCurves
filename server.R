@@ -718,9 +718,9 @@ server <- function(input, output) {
           
           if (is.na(div) == TRUE){
             byidmean <- NA
-          } else if (div > 1.5){
+          } else if (div >= 1.5){
             byidemean <- "Repeat"
-          } else if (div < 0.5 & div > 0){
+          } else if (div <= 0.5 & div > 0){
             byidemean <- "Repeat"
           } else if (div == 0){
             byidmean <- 0
@@ -786,9 +786,9 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangebiorad[1] & as.numeric(paste(x)) < input$rangebiorad[2]){
+          } else if (as.numeric(paste(x)) >= input$rangebiorad[1] & as.numeric(paste(x)) <= input$rangebiorad[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangebiorad[2]){
             "Negative"
@@ -841,7 +841,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
                 "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvbiorad){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvbiorad){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
               "Repeat"
@@ -861,10 +861,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgenbiorad){
-            "Positive"
-          } else if (pos < input$numposgenbiorad){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -948,9 +952,9 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangebiorad[1] & as.numeric(paste(x)) < input$rangebiorad[2]){
+          } else if (as.numeric(paste(x)) >= input$rangebiorad[1] & as.numeric(paste(x)) <= input$rangebiorad[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangebiorad[2]){
             "Negative"
@@ -1003,7 +1007,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvbiorad){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvbiorad){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
               "Repeat"
@@ -1023,10 +1027,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgenbiorad){
-            "Positive"
-          } else if (pos < input$numposgenbiorad){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -1073,9 +1081,9 @@ server <- function(input, output) {
           
           if (is.na(div) == TRUE){
             byidmean <- NA
-          } else if (div > 1.5){
+          } else if (div >= 1.5){
             byidemean <- "Repeat"
-          } else if (div < 0.5 & div > 0){
+          } else if (div <= 0.5 & div > 0){
             byidemean <- "Repeat"
           } else if (div == 0){
             byidmean <- 0
@@ -1112,7 +1120,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -1181,7 +1189,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctbiorad & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctbiorad & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -2093,9 +2101,9 @@ server <- function(input, output) {
           
           if (is.na(div) == TRUE){
             byidmean <- NA
-          } else if (div > 1.5){
+          } else if (div >= 1.5){
             byidemean <- "Repeat"
-          } else if (div < 0.5 & div > 0){
+          } else if (div <= 0.5 & div > 0){
             byidemean <- "Repeat"
           } else if (div == 0){
             byidmean <- 0
@@ -2163,7 +2171,7 @@ server <- function(input, output) {
             NA
           } else if (as.numeric(paste(x)) < input$minctapplied & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangeapplied[1] & as.numeric(paste(x)) < input$rangeapplied[2]){
+          } else if (as.numeric(paste(x)) >= input$rangeapplied[1] & as.numeric(paste(x)) <= input$rangeapplied[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangeapplied[2]){
             "Negative"
@@ -2216,7 +2224,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvapplied){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvapplied){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied){
               "Repeat"
@@ -2236,10 +2244,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgenapplied){
-            "Positive"
-          } else if (pos < input$numposgenapplied){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -2325,7 +2337,7 @@ server <- function(input, output) {
             NA
           } else if (as.numeric(paste(x)) < input$minctapplied & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangeapplied[1] & as.numeric(paste(x)) < input$rangeapplied[2]){
+          } else if (as.numeric(paste(x)) >= input$rangeapplied[1] & as.numeric(paste(x)) <= input$rangeapplied[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangeapplied[2]){
             "Negative"
@@ -2378,7 +2390,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvapplied){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvapplied){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied){
               "Repeat"
@@ -2398,10 +2410,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgenapplied){
-            "Positive"
-          } else if (pos < input$numposgenapplied){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -2448,9 +2464,9 @@ server <- function(input, output) {
           
           if (is.na(div) == TRUE){
             byidmean <- NA
-          } else if (div > 1.5){
+          } else if (div >= 1.5){
             byidemean <- "Repeat"
-          } else if (div < 0.5 & div > 0){
+          } else if (div <= 0.5 & div > 0){
             byidemean <- "Repeat"
           } else if (div == 0){
             byidmean <- 0
@@ -2487,7 +2503,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctapplied & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctapplied & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -2556,7 +2572,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctapplied & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctapplied & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -3926,7 +3942,7 @@ server <- function(input, output) {
             NA
           } else if (as.numeric(paste(x)) < input$minctsybr & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangesybr[1] & as.numeric(paste(x)) < input$rangesybr[2]){
+          } else if (as.numeric(paste(x)) >= input$rangesybr[1] & as.numeric(paste(x)) <= input$rangesybr[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangesybr[2]){
             "Negative"
@@ -3979,7 +3995,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvsybr){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybr){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr){
               "Repeat"
@@ -3999,10 +4015,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgensybr){
-            "Positive"
-          } else if (pos < input$numposgensybr){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -4088,7 +4108,7 @@ server <- function(input, output) {
             NA
           } else if (as.numeric(paste(x)) < input$minctsybr & as.numeric(paste(x)) != 0){
             "Positive"
-          } else if (as.numeric(paste(x)) > input$rangesybr[1] & as.numeric(paste(x)) < input$rangesybr[2]){
+          } else if (as.numeric(paste(x)) >= input$rangesybr[1] & as.numeric(paste(x)) <= input$rangesybr[2]){
             "Check copy number"
           } else if (as.numeric(paste(x)) > input$rangesybr[2]){
             "Negative"
@@ -4139,7 +4159,7 @@ server <- function(input, output) {
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) > input$mincnvsybr){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybr){
               "Positive"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr){
               "Repeat"
@@ -4161,10 +4181,14 @@ server <- function(input, output) {
           cc <- x[grep("CopyCheck", names(x))]
           pos <- sum(str_count(cc, "Positive"), na.rm = TRUE)
           neg <- sum(str_count(cc, "Negative"), na.rm = TRUE)
-          if (pos >= input$numposgensybr){
-            "Positive"
-          } else if (pos < input$numposgensybr){
-            "Negative"
+          if (any(grepl("Repeat", cc)) == TRUE){
+            "Repeat"
+          } else if (any(grepl("Repeat", cc)) == FALSE){
+            if (pos >= input$numposgensybr){
+              "Positive"
+            } else if (pos < input$numposgensybr){
+              "Negative"
+            }
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -4211,9 +4235,9 @@ server <- function(input, output) {
           
           if (is.na(div) == TRUE){
             byidmean <- NA
-          } else if (div > 1.5){
+          } else if (div >= 1.5){
             byidemean <- "Repeat"
-          } else if (div < 0.5 & div > 0){
+          } else if (div <= 0.5 & div > 0){
             byidemean <- "Repeat"
           } else if (div == 0){
             byidmean <- 0
@@ -4250,7 +4274,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctsybr & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctsybr & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -4319,7 +4343,7 @@ server <- function(input, output) {
             "Repeat"
           } else if (is.na(as.numeric(paste(x))) == TRUE){
             NA
-          } else if (as.numeric(paste(x)) < input$minctsybr & as.numeric(paste(x)) != 0){
+          } else if (as.numeric(paste(x)) <= input$minctsybr & as.numeric(paste(x)) != 0){
             "Positive"
           } else if (as.numeric(paste(x)) == 0){
             "Negative"
@@ -4383,249 +4407,6 @@ server <- function(input, output) {
   output$analysissybr <- renderDataTable({
     AnalysisSamplesDTSYBR()
   })
-  
-  'AnalysisSamplesSYBR <- function(){
-    
-    ## Real Id, Sample, Replicate columns
-    a <- setupMultiCSYBR()
-    sample <- rep(paste("S",1:length(a$Real_ID), sep=""), each=1)
-    dup1 <- paste(sample,"-1", sep="")
-    dup2 <- paste(sample,"-2", sep="")
-    
-    cq <- cqPlateSYBR()
-    n <- as.numeric(stack(cq[,1:6])[,1])
-
-    odd<-seq(1,length(n)-1,2)
-    even<-seq(2,length(n),2)
-    
-    n_dup1 <- vector()
-    for (i in odd){
-      n_dup1 <- append(n_dup1,n[i])
-    }
-    n_dup2 <- vector()
-    for (i in even){
-      n_dup2 <- append(n_dup2, n[i])
-    }
-    
-    s <- as.numeric(stack(cq[,7:12])[,1])
-    s_dup1 <- vector()
-    for (i in odd){
-      s_dup1 <- append(s_dup1,s[i])
-    }
-    s_dup2 <- vector()
-    for (i in even){
-      s_dup2 <- append(s_dup2,s[i])
-    }
-    
-    rdrp <- as.numeric(stack(cq[,13:18])[,1])
-    rdrp_dup1 <- vector()
-    for (i in odd){
-      rdrp_dup1 <- append(rdrp_dup1,rdrp[i])
-    }
-    rdrp_dup2 <- vector()
-    for (i in even){
-      rdrp_dup2 <- append(rdrp_dup2,rdrp[i])
-    }
-    
-    rpp30 <- as.numeric(stack(cq[,19:24])[,1])
-    rpp30_dup1 <- vector()
-    for (i in odd){
-      rpp30_dup1 <- append(rpp30_dup1,rpp30[i])
-    }
-    rpp30_dup2 <- vector()
-    for (i in even){
-      rpp30_dup2 <- append(rpp30_dup2,rpp30[i])
-    }
-    
-    #### Controls ####
-    h1 <- vector()
-    h2 <- vector()
-    n1 <- vector()
-    n2 <- vector()
-    s1 <- vector()
-    s2 <- vector()
-    r1 <- vector()
-    r2 <- vector()
-    n1n2 <- vector()
-    s1s2 <- vector()
-    r1r2 <- vector()
-    spos <- vector()
-    npos <- vector()
-    rpos <- vector()
-    score <- vector()
-    assignment <- vector()
-    comments <- vector()
-    for (i in 1:nrow(a)){
-      #### h1 ####
-      if (is.na(rpp30_dup1[i]) == TRUE){
-        h1 <- append(h1, "OJO")
-      } else if (as.numeric(rpp30_dup1[i]) > 35){
-        h1 <- append(h1, "OJO")
-      } else {
-        h1 <- append(h1, "OK")
-      }
-      #### h2 ####
-      if (is.na(rpp30_dup2[i]) == TRUE){
-        h2 <- append(h2, "OJO")
-        }else if (as.numeric(rpp30_dup2[i]) > 35){
-          h2 <- append(h2, "OJO")
-        }else {
-          h2 <- append(h2, "OK")
-        }
-     
-      ### n1 ####
-      if (is.na(n_dup1[i]) == TRUE){
-        n1 <- append(n1, "null")
-      } else if (as.numeric(n_dup1[i]) == 0){
-        n1 <- append(n1, "neg")
-      } else if (as.numeric(n_dup1[i]) < 40){
-        n1 <- append(n1, "pos")
-      } else {
-        n1 <- append(n1, "neg")
-      }
-      
-      ## n2 ##
-      if (is.na(n_dup2[i]) == TRUE){
-        n2 <- append(n2, "null")
-      } else if (as.numeric(n_dup2[i]) == 0){
-        n2 <- append(n2, "neg")
-      } else if (as.numeric(n_dup2[i]) < 40){
-        n2 <- append(n2, "pos")
-      } else {
-        n2 <- append(n2, "neg")
-      }
-      
-      ## s1 ##
-      if (is.na(s_dup1[i]) == TRUE){
-        s1 <- append(s1, "null")
-      } else if (as.numeric(s_dup1[i]) == 0){
-        s1 <- append(s1, "neg")
-      } else if (as.numeric(s_dup1[i]) < 40){
-        s1 <- append(s1, "pos")
-      } else {
-        s1 <- append(s1, "neg")
-      }
-      
-      ## s2 ##
-      if (is.na(s_dup2[i]) == TRUE){
-        s2 <- append(s2, "null")
-      } else if (as.numeric(s_dup2[i]) == 0){
-        s2 <- append(s2, "neg")
-      } else if (as.numeric(s_dup2[i]) < 40){
-        s2 <- append(s2, "pos")
-      } else {
-        s2 <- append(s2, "neg")
-      }
-      
-      ## rdrp1 ##
-      if (is.na(rdrp_dup1[i]) == TRUE){
-        r1 <- append(r1, "null")
-      } else if (as.numeric(rdrp_dup1[i]) == 0){
-        r1 <- append(r1, "neg")
-      } else if (as.numeric(rdrp_dup1[i]) < 40){
-        r1 <- append(r1, "pos")
-      } else {
-        r1 <- append(r1, "neg")
-      }
-      
-      ## rdrp2 ##
-      if (is.na(rdrp_dup2[i]) == TRUE){
-        r2 <- append(r2, "null")
-      } else if (as.numeric(rdrp_dup2[i]) == 0){
-        r2 <- append(r2, "neg")
-      } else if (as.numeric(rdrp_dup2[i]) < 40){
-        r2 <- append(r2, "pos")
-      } else {
-        r2 <- append(r2, "neg")
-      }
-      
-      n1n2 <- append(n1n2, paste(n1[i],"N",n2[i], sep=""))
-      s1s2 <- append(s1s2, paste(s1[i],"S",s2[i], sep=""))
-      r1r2 <- append(r1r2, paste(r1[i],"R",r2[i], sep=""))
-      
-      ### spos ###
-      if (s1s2[i] == "negSneg"){
-        spos <- append(spos, 0)
-      }else if(s1s2[i] == "posSpos"){
-        spos <- append(spos, 1)
-      } else {
-        spos <- append(spos, 9)
-      }
-      
-      ### npos ###
-      if (n1n2[i] == "negNneg"){
-        npos <- append(npos, 0)
-      }else if(n1n2[i] == "posNpos"){
-        npos <- append(npos, 1)
-      } else {
-        npos <- append(npos, 9)
-      }
-      
-      ### npos ###
-      if (r1r2[i] == "negNneg"){
-        rpos <- append(rpos, 0)
-      }else if(r1r2[i] == "posNpos"){
-        rpos <- append(rpos, 1)
-      } else {
-        rpos <- append(rpos, 9)
-      }
-      
-      ### Score ###
-      score <- append(score, sum(npos[i],spos[i],rpos[i]))
-      
-      ### Assignment ###
-      if (is.na(a$Real_ID[i]) == TRUE){
-        assignment <- append(assignment, "")
-      } else if(h1[i] == "OJO"){
-        assignment <- append(assignment, "Null")
-      } else if(h2[i] == "OJO"){
-        assignment <- append(assignment, "Null")
-      } else if (as.numeric(score[i]) < 2){
-        assignment <- append(assignment, "Negative")
-      } else if (as.numeric(score[i]) < 4){
-        assignment <- append(assignment, "Positive")
-      } else if (as.numeric(score[i]) == 10){
-        assignment <- append(assignment, "Null")
-      } else if (as.numeric(score[i]) < 10){
-        assignment <- append(assignment, "Negative")
-      } else if (as.numeric(score[i]) < 12){
-        assignment <- append(assignment, "Positive")
-      } else {
-        assignment <- append(assignment, "Null")
-      }
-      
-      if (is.na(a$Real_ID[i]) == TRUE){
-        comments <- append(comments, "")
-      } else if (h1[i] == "OJO") {
-        comments <- append(comments, "Housekeeping failed")
-      } else if (h2[i] == "OJO") {
-        comments <- append(comments, "Housekeeping failed")
-      } else {
-        comments <- append(comments, "")
-      }
-      
-    }
-    
-    final <- cbind(a$Real_ID, sample, dup1, n_dup1, s_dup1, rdrp_dup1, rpp30_dup1, dup2, n_dup2, s_dup2, rdrp_dup2, rpp30_dup2,h1,h2,n1,n2,r1,r2, n1n2,s1s2,r1r2, npos, spos, rpos, score, assignment, comments)
-    final <- as.data.frame(final)
-    colnames(final) <- c("Real_ID","Sample", "Dup1", "N_Ct_1", "S_Ct_1", "RdRP_Ct_1", "RPP30_Ct_1","Dup2","N_Ct_2", "S_Ct_2", "RdRP_Ct_2", "RPP30_Ct_2", "H1", "H2", "N1","N2","R1","R2", "N1N2", "S1S2", "R1R2", "Npos", "Spos", "Rpos", "Score", "Assignment", "Comments")
-    return(final)
-  }
-  
-  AnalysisSamplesSYBRDT <- function(){
-    df <- AnalysisSamplesSYBR()
-    defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
-    f <- defdt %>%
-      formatStyle(
-        columns = 1:2,
-        backgroundColor = "lemonchiffon"
-      )
-    return(f)
-  }
-  
-  output$analysissybr <- renderDataTable({
-    AnalysisSamplesSYBRDT()
-  })'
   
   ################## ID Well Tab: SYBR ##############################
   IDWELLtabSYBR <- function(){
