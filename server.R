@@ -864,9 +864,9 @@ server <- function(input, output) {
           if (any(grepl("Repeat", cc)) == TRUE){
             "Repeat"
           } else if (any(grepl("Repeat", cc)) == FALSE){
-            if (pos >= input$numposgensybr){
+            if (pos >= input$numposgenbiorad){
               "Positive"
-            } else if (pos < input$numposgensybr){
+            } else if (pos < input$numposgenbiorad){
               "Negative"
             }
           }
@@ -1030,9 +1030,9 @@ server <- function(input, output) {
           if (any(grepl("Repeat", cc)) == TRUE){
             "Repeat"
           } else if (any(grepl("Repeat", cc)) == FALSE){
-            if (pos >= input$numposgensybr){
+            if (pos >= input$numposgenbiorad){
               "Positive"
-            } else if (pos < input$numposgensybr){
+            } else if (pos < input$numposgenbiorad){
               "Negative"
             }
           }
@@ -1227,7 +1227,13 @@ server <- function(input, output) {
     }
     
   }
-      
+  
+  output$downanbiorad <- downloadHandler(
+    filename = "Analysis.csv",
+    content = function(fname){
+      write.csv(AnalysisSamples(), fname, quote = F, row.names = F)}
+  )
+  
   AnalysisSamplesDT <- function(){
     df <- AnalysisSamples()
     defdt <- datatable(df, rownames = F, options = list(pageLength = 120))
@@ -2247,9 +2253,9 @@ server <- function(input, output) {
           if (any(grepl("Repeat", cc)) == TRUE){
             "Repeat"
           } else if (any(grepl("Repeat", cc)) == FALSE){
-            if (pos >= input$numposgensybr){
+            if (pos >= input$numposgenapplied){
               "Positive"
-            } else if (pos < input$numposgensybr){
+            } else if (pos < input$numposgenapplied){
               "Negative"
             }
           }
@@ -2413,9 +2419,9 @@ server <- function(input, output) {
           if (any(grepl("Repeat", cc)) == TRUE){
             "Repeat"
           } else if (any(grepl("Repeat", cc)) == FALSE){
-            if (pos >= input$numposgensybr){
+            if (pos >= input$numposgenapplied){
               "Positive"
-            } else if (pos < input$numposgensybr){
+            } else if (pos < input$numposgenapplied){
               "Negative"
             }
           }
@@ -2610,6 +2616,12 @@ server <- function(input, output) {
     }
     
   }
+  
+  output$downanapplied <- downloadHandler(
+    filename = "Analysis.csv",
+    content = function(fname){
+      write.csv(AnalysisSamplesApp(), fname, quote = F, row.names = F)}
+  )
   
   AnalysisSamplesDTApp <- function(){
     df <- AnalysisSamplesApp()
@@ -4379,8 +4391,13 @@ server <- function(input, output) {
       mean_cq_merged[["Assignment"]] <- ctassig
       return(mean_cq_merged)
     }
-    
   }
+  
+  output$downansybr <- downloadHandler(
+    filename = "Analysis.csv",
+    content = function(fname){
+      write.csv(AnalysisSamplesSYBR(), fname, quote = F, row.names = F)}
+  )
   
   AnalysisSamplesDTSYBR <- function(){
     df <- AnalysisSamplesSYBR()

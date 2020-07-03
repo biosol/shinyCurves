@@ -49,7 +49,7 @@ ui <- fluidPage(
         numericInput("ct", "Enter Ct value", value = 40),
         textInput("endoC", "Enter endogenous control", value = "RNAseP"),
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
-        fileInput("taqidres", label = "Upload ID_results.csv here")
+        fileInput("taqidres", label = "Upload ID_result.csv here")
       ),
       checkboxInput("inpsybr", "3a) Input: SYBR"),
       conditionalPanel(
@@ -101,7 +101,7 @@ ui <- fluidPage(
           #tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
           #tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
           tabPanel("Standard Curve", fluidRow(dataTableOutput("stdcurve"), plotOutput("std"))),
-          tabPanel("Analysis Samples", dataTableOutput("analysis")),
+          tabPanel("Analysis", downloadButton("downanbiorad", "Download CSV"),dataTableOutput("analysis")),
           #tabPanel("Interpretation", dataTableOutput("interpret")),
           tabPanel("ID_Well", downloadButton("downIDWELL", "Download CSV"), tableOutput("IDWELL")),
           tabPanel("ID_Result",downloadButton("downidres", "Download CSV"), tableOutput("IDRESULT"))
@@ -122,7 +122,7 @@ ui <- fluidPage(
           #tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
           #tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticapp")),
           tabPanel("Std Curves", dataTableOutput("stdcurveapp"), plotOutput("stdapp")),
-          tabPanel("Analysis Samples", dataTableOutput("analysisapp")),
+          tabPanel("Analysis", downloadButton("downanapplied", "Download CSV"),dataTableOutput("analysisapp")),
           #tabPanel("Interpretation", dataTableOutput("interpretapp")),
           tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp")),
           tabPanel("ID Result", downloadButton("downidresapp", "Download CSV"),tableOutput("IDRESULTApp"))
@@ -136,8 +136,8 @@ ui <- fluidPage(
           type = "tabs",
           tabPanel("ID_Well", tableOutput("taqmanwell")),
           tabPanel("ID_Result", tableOutput("taqmanidres")),
-          tabPanel("C", tableOutput("c")),
-          tabPanel("Info", tableOutput("info")),
+          #tabPanel("C", tableOutput("c")),
+          #tabPanel("Info", tableOutput("info")),
           tabPanel("General Plots", downloadButton("downgen", "Download PDF"), plotOutput("genplots", height = "1000px")),
           tabPanel("Indet Plots", uiOutput("indetplots"))
         )
@@ -154,8 +154,8 @@ ui <- fluidPage(
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybr")),
           #tabPanel("Check Sample Order", dataTableOutput("samplechecksybr")),
           #tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticsybr")),
-          tabPanel("Standard Curve", dataTableOutput("stdcurvesybr"),plotOutput("stdsybr")),
-          tabPanel("Analysis Samples", dataTableOutput("analysissybr")),
+          tabPanel("Standard Curve", dataTableOutput("stdcurvesybr"), plotOutput("stdsybr")),
+          tabPanel("Analysis", downloadButton("downansybr", "Download CSV"), dataTableOutput("analysissybr")),
           tabPanel("ID_Well", downloadButton("downIDWELLsybr", "Download CSV"), tableOutput("IDWELLsybr")),
           tabPanel("ID_Result", downloadButton("downIDRESsybr", "Download CSV"), tableOutput("IDRESsybr"))
         )
