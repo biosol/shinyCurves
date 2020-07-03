@@ -40,7 +40,7 @@ ui <- fluidPage(
                          numericInput("mincnvapplied", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
         )
       ),
-      checkboxInput("taqman", "2) Analysis: Taqman Cq Curves"),
+      checkboxInput("taqman", "2) Analysis: Taqman Ct Curves"),
       conditionalPanel(
         condition = "input.taqman == true",
         fileInput("taqmancsv",
@@ -84,7 +84,9 @@ ui <- fluidPage(
                      selected = TRUE),
         fileInput("wellid",
                   label="Upload ID_well.csv here")
-      )
+      ),
+      downloadButton("downtoy", "Download Toy Dataset"),
+      downloadButton("downmanual", "Download Manual")
     ),
       mainPanel(
       ###### 1a) Main Panel for Biorad Input ########
@@ -96,7 +98,7 @@ ui <- fluidPage(
           #tabPanel("Empty Plate", dataTableOutput("plate")),
           tabPanel("Raw Data", tableOutput("inputdf")),
           tabPanel("Run Information", tableOutput("BRruninfo")),
-          tabPanel("Cq Plate", dataTableOutput("cqplate")),
+          tabPanel("Ct Plate", dataTableOutput("ctplate")),
           tabPanel("Sample Plate", dataTableOutput("sampleplate")),
           #tabPanel("Plate Setup MultiChanel", dataTableOutput("setupmultic")),
           #tabPanel("Sample Order Check", dataTableOutput("samplecheck")),
@@ -117,7 +119,7 @@ ui <- fluidPage(
           tabPanel("Conversion", uiOutput("conversionapp")),
           tabPanel("Run Info", tableOutput("appliedruninfo")),
           tabPanel("Applied Results", tableOutput("appliedres")),
-          tabPanel("Cq Plate", dataTableOutput("cqplateapp")),
+          tabPanel("Ct Plate", dataTableOutput("ctplateapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
           #tabPanel("Check Samples", dataTableOutput("samplecheckapp")),
           #tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticapp")),
@@ -150,7 +152,7 @@ ui <- fluidPage(
           type = "tabs",
           tabPanel("Run Information", tableOutput("sybrruninfo")),
           tabPanel("Raw Data", tableOutput("sybrdata")),
-          tabPanel("Cq Plate", dataTableOutput("cqplatesybr")),
+          tabPanel("Ct Plate", dataTableOutput("ctplatesybr")),
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybr")),
           #tabPanel("Check Sample Order", dataTableOutput("samplechecksybr")),
           #tabPanel("Plate Setup Multichanel", dataTableOutput("setupmulticsybr")),

@@ -2,6 +2,30 @@
 ########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
 
 server <- function(input, output) {
+ 
+  ################ TOY DATASET #################
+  output$downtoy <- downloadHandler(
+    filename <- function() {
+      paste("prueba", "csv", sep=".")
+    },
+    
+    content <- function(file) {
+      file.copy("prueba.csv", file)
+    },
+    contentType = "prueba.csv"
+  )
+  
+  ############### MANUAL ################
+  output$downmanual <- downloadHandler(
+    filename <- function() {
+      paste("manual", "pdf", sep=".")
+    },
+    
+    content <- function(file) {
+      file.copy("manual.pdf", file)
+    },
+    contentType = "manual.pdf"
+  )
   
   ################## BIORAD ##################
   ############################################
@@ -136,7 +160,7 @@ server <- function(input, output) {
   )
   
   ################## Cq Plate Tab: Biorad ######################
-  cqPlate <- function(){
+  ctPlate <- function(){
     inp <- readBiorad()[[1]]
     r <- vector()
     c <- vector()
@@ -162,16 +186,16 @@ server <- function(input, output) {
   }
   
   ## Convert to datatable to render nicely in shiny
-  printCqPlate <- function(){
-    dt <- cqPlate()
+  printCtPlate <- function(){
+    dt <- ctPlate()
     defdt <- datatable(dt, rownames = T, options = list(pageLength = 20)) %>%
       formatRound(columns = c(1:ncol(dt)), digits = 3)
     return(defdt)
   }
   
   #### Render Table in App ### 
-  output$cqplate<- renderDataTable(
-    printCqPlate()
+  output$ctplate<- renderDataTable(
+    printCtPlate()
   )
   
   ################## Sample Plate Tab: Biorad ############################
@@ -747,35 +771,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(mean_cq, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffs()
-      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(MeanCq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
-      
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
       ## if mean na -> na
@@ -819,14 +814,41 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgenbiorad){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
       }
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
+      
+      ## Log Copies
+      coeffs <- stdCoeffs()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+            lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+            logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+            cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
+      
       
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
@@ -913,34 +935,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(d_g_clean, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffs()
-      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(Cq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"Cq",sep="")])+unlist(coeffs[1,paste(studygenes[i],"Cq",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
@@ -993,6 +987,33 @@ server <- function(input, output) {
       }
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
+      
+      coeffs <- stdCoeffs()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+              lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+              logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+              cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
@@ -1147,8 +1168,6 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgenbiorad){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
@@ -1216,8 +1235,6 @@ server <- function(input, output) {
             ctassig <- append(ctassig, "Positive")
           } else if (pos < input$numposgenbiorad){
             ctassig <- append(ctassig, "Negative")
-          } else if (neg > pos){
-            ctassig <- append(ctassig, "Negative")
           }
         }
       }
@@ -1247,11 +1264,13 @@ server <- function(input, output) {
         backgroundColor = styleEqual(c("Positive", "Negative", "Repeat"), 
                                      c("limegreen", "tomato", "lightblue")),
         fontWeight = "bold"
-      ) %>%
+      ) 
+      
+      '%>%
       formatRound(
         columns = grep("Copies", names(df)),
         digits = 3
-      )
+      )'
     
     return(t)
   }
@@ -1524,8 +1543,8 @@ server <- function(input, output) {
     readAppliedResults()
   })
   
-  ################## Cq Plate Tab: Applied ##################
-  cqPlateApp <- function(){
+  ################## Ct Plate Tab: Applied ##################
+  ctPlateApp <- function(){
     inp <- readAppliedResults()
     r <- vector()
     c <- vector()
@@ -1550,15 +1569,15 @@ server <- function(input, output) {
   }
   
   ## Convert to datatable to render nicely in shiny
-  printCqPlateApp <- function(){
-    dt <- cqPlateApp()
+  printCtPlateApp <- function(){
+    dt <- ctPlateApp()
     defdt <- datatable(dt, rownames = T, options = list(pageLength = 20)) %>%
       formatRound(columns = c(1:ncol(dt)), digits = 3)
     return(defdt)
   }
   
-  output$cqplateapp<- renderDataTable(
-    printCqPlateApp()
+  output$ctplateapp<- renderDataTable(
+    printCtPlateApp()
   )
   
   ################## Sample Plate Tab: Applied ##########################
@@ -2136,35 +2155,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(mean_cq, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffsApp()
-      studygenes <- genes[grep(input$endocapplied, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(MeanCq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
-      
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
       ## if mean na -> na
@@ -2208,14 +2198,39 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgenapplied){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
       }
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
+      
+      coeffs <- stdCoeffsApp()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+              lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+              logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+              cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
@@ -2302,34 +2317,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(d_g_clean, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffsApp()
-      studygenes <- genes[grep(input$endocapplied, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(Cq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"Cq",sep="")])+unlist(coeffs[1,paste(studygenes[i],"Cq",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
@@ -2374,8 +2361,6 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgenapplied){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
@@ -2383,6 +2368,32 @@ server <- function(input, output) {
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
       
+      coeffs <- stdCoeffsApp()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+              lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+              logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+              cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
       p <- as.data.frame(cbind(mean_cq_merged[,grep("FinalCtCheck|(Copies)", names(mean_cq_merged))]))
@@ -2536,8 +2547,6 @@ server <- function(input, output) {
             ctassig <- append(ctassig, "Positive")
           } else if (pos < input$numposgenapplied){
             ctassig <- append(ctassig, "Negative")
-          } else if (neg > pos){
-            ctassig <- append(ctassig, "Negative")
           }
         }
       }
@@ -2604,8 +2613,6 @@ server <- function(input, output) {
           } else if(pos >= input$numposgenapplied){
             ctassig <- append(ctassig, "Positive")
           } else if (pos < input$numposgenapplied){
-            ctassig <- append(ctassig, "Negative")
-          } else if (neg > pos){
             ctassig <- append(ctassig, "Negative")
           }
         }
@@ -3236,8 +3243,8 @@ server <- function(input, output) {
     readSYBR()[1]
   )
   
-  ################## Cq Plate Tab: SYBR ##############
-  cqPlateSYBR <- function(){
+  ################## Ct Plate Tab: SYBR ##############
+  ctPlateSYBR <- function(){
     inp <- readSYBR()[[1]]
     r <- vector()
     c <- vector()
@@ -3265,16 +3272,16 @@ server <- function(input, output) {
   }
   
   ## Convert to datatable to render nicely in shiny
-  printCqPlateSYBR <- function(){
-    dt <- cqPlateSYBR()
+  printCtPlateSYBR <- function(){
+    dt <- ctPlateSYBR()
     defdt <- datatable(dt, rownames = T, options = list(pageLength = 20))%>%
       formatRound(columns = c(1:ncol(dt)), digits = 3)
     return(defdt)
   }
   
   #### Render Table in App ### 
-  output$cqplatesybr<- renderDataTable(
-    printCqPlateSYBR()
+  output$ctplatesybr<- renderDataTable(
+    printCtPlateSYBR()
   )
   
   ################## Sample Plate Tab: SYBR ############################
@@ -3913,35 +3920,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(mean_cq, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffsSYBR()
-      studygenes <- genes[grep(input$endocsybr, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(MeanCq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
-      
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
       ## if mean na -> na
@@ -3985,14 +3963,40 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgensybr){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
       }
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
+      
+      ## Log Copies
+      coeffs <- stdCoeffsSYBR()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+              lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+              logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+              cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
@@ -4079,35 +4083,6 @@ server <- function(input, output) {
       mean_cq_merged <- join_all(d_g_clean, by="ID")
       mean_cq_merged <- mean_cq_merged[order(as.numeric(as.character(mean_cq_merged$ID))),]
       
-      ## Log Copies
-      coeffs <- stdCoeffsSYBR()
-      studygenes <- genes[grep(input$endocsybr, genes, invert = TRUE)]
-      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
-      for (i in 1:length(studygenes)){
-        logcop <- vector()
-        cop <- vector()
-        for (j in mean_cq_merged[,paste(studygenes[i],"(Cq)",sep = "")]){
-          if (j == "Repeat"){
-            logcop <- append(logcop, "Repeat")
-            cop <- append(cop, "Repeat")
-          } else if(is.na(j) == TRUE){
-            logcop <- append(logcop, NA)
-            cop <- append(cop, NA)
-          } else if(j == 0){
-            logcop <- append(logcop, 0)
-            cop <- append(cop, 0)
-          } else {
-            lg <- as.numeric(j)*unlist(coeffs[2,paste(studygenes[i],"Cq",sep="")])+unlist(coeffs[1,paste(studygenes[i],"Cq",sep="")])
-            logcop <- append(logcop, lg)
-            cop <- append(cop, 10^lg)
-          }
-        }
-        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
-        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
-      }
-      
-      mean_cq_merged[mean_cq_merged == "NA"] <- NA
-      
       ## Positive samples (< than minctbiorad) only for study genes
       ## If mean Repeat -> Repeat
       ## if mean na -> na
@@ -4151,14 +4126,40 @@ server <- function(input, output) {
               ctassig <- append(ctassig, "Positive")
             } else if (pos < input$numposgensybr){
               ctassig <- append(ctassig, "Negative")
-            } else if (neg > pos){
-              ctassig <- append(ctassig, "Negative")
             }
           }
         }
       }
       
       mean_cq_merged[["FinalCtCheck"]] <- ctassig
+      
+      ## Log Copies
+      coeffs <- stdCoeffsSYBR()
+      studygenes <- genes[grep(input$endoC, genes, invert = TRUE)]
+      df <- data.frame(matrix(0,ncol = length(studygenes), nrow = nrow(mean_cq_merged[1])))
+      for (i in 1:length(studygenes)){
+        logcop <- vector()
+        cop <- vector()
+        for (j in 1:length(mean_cq_merged[,"FinalCtCheck"])){
+          if (mean_cq_merged[j,"FinalCtCheck"] == "Check copy number"){
+            if (mean_cq_merged[j,paste(studygenes[i],"(MeanCq)", sep="")] == 0){
+              logcop <- append(logcop, 0)
+              cop <- append(cop, 0)
+            } else {
+              lg <- as.numeric(as.character(mean_cq_merged[j,paste(studygenes[i],"(MeanCq)",sep = "")]))*unlist(coeffs[2,paste(studygenes[i],"(Avg)",sep="")])+unlist(coeffs[1,paste(studygenes[i],"(Avg)",sep="")])
+              logcop <- append(logcop, format(round(lg, 3), nsmall = 3))
+              cop <- append(cop, format(round(as.numeric(10^lg), 3), nsmall = 3))
+            }
+          } else if (mean_cq_merged[j,"FinalCtCheck"] != "Check copy number"){
+            logcop <- append(logcop, "-")
+            cop <- append(cop, "-")
+          }
+        }
+        mean_cq_merged[[paste(studygenes[i],"(LogCopies)", sep="")]] <- logcop
+        mean_cq_merged[[paste(studygenes[i],"(Copies)", sep="")]] <- cop
+      }
+      
+      mean_cq_merged[mean_cq_merged == "NA"] <- NA
       
       ## CopyCheck:gene columns
       ## Copy number (only for duplicate samples) and Ct in range specified (35-40 for Covid)
@@ -4313,8 +4314,6 @@ server <- function(input, output) {
             ctassig <- append(ctassig, "Positive")
           } else if (pos < input$numposgensybr){
             ctassig <- append(ctassig, "Negative")
-          } else if (neg > pos){
-            ctassig <- append(ctassig, "Negative")
           }
         }
       }
@@ -4381,8 +4380,6 @@ server <- function(input, output) {
           } else if(pos >= input$numposgensybr){
             ctassig <- append(ctassig, "Positive")
           } else if (pos < input$numposgensybr){
-            ctassig <- append(ctassig, "Negative")
-          } else if (neg > pos){
             ctassig <- append(ctassig, "Negative")
           }
         }
