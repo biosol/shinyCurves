@@ -97,8 +97,8 @@ ui <- fluidPage(
                   label="Upload CSV here",
                   multiple = TRUE),
         numericInput("cutarea", "Enter cut.Area value", value = 10),
-        numericInput("lowertmborder", "Enter lower Tm border", value = 0.5),
-        numericInput("uppertmborder", "Enter upper Tm border", value = 0.5),
+        textInput("lowertmborder", "Enter lower Tm border", value = 0.5),
+        textInput("uppertmborder", "Enter upper Tm border", value = 0.5),
         radioButtons("isderiv", "Are your data already in first derivative transformed format?",
                      choices = c(Yes = TRUE,
                                  No = FALSE),
@@ -179,7 +179,7 @@ ui <- fluidPage(
           type = "tabs",
           tabPanel("ID_well", tableOutput("well")),
           tabPanel("TM Plots", uiOutput("tmplots")),
-          tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), actionButton("send2drive", "Send to Google Drive", icon = icon("google-drive", lib="font-awesome")),
+          tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"),
                    tableOutput("tmtable")
           )
         )
