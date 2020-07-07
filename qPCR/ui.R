@@ -25,7 +25,8 @@ ui <- fluidPage(
   titlePanel(strong("qPCR Analysis")),
   sidebarLayout(
     sidebarPanel(
-      checkboxInput("taqexcel", "1a) Input: Taqman - BioRad"),
+      h5(strong("Taqman")),
+      checkboxInput("taqexcel", "Analysis - BioRad"),
       conditionalPanel(
         condition = "input.taqexcel == true",
         fileInput("biorad", 
@@ -43,11 +44,11 @@ ui <- fluidPage(
           numericInput("mincnvbiorad", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
           )
         ),
-      checkboxInput("app", "1b) Input: Taqman - Applied Quant Studio"),
+      checkboxInput("app", "Analysis - Applied Quant Studio"),
       conditionalPanel(
         condition = "input.app == true",
         fileInput("appl",
-                  label = "Upload Applied Quant Studio xlsx",
+                  label = "Upload Applied Quant Studio xls/xlsx here",
                   multiple = TRUE),
         textInput("endocapplied", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocapplied", "Maximum cycle number for endogenous control", value = 35),
@@ -61,7 +62,7 @@ ui <- fluidPage(
                          numericInput("mincnvapplied", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
         )
       ),
-      checkboxInput("taqman", "2) Analysis: Taqman Ct Curves"),
+      checkboxInput("taqman", "Ct Curves"),
       conditionalPanel(
         condition = "input.taqman == true",
         fileInput("taqmancsv",
@@ -72,7 +73,8 @@ ui <- fluidPage(
         fileInput("taqwellid", label = "Upload ID_well.csv here"),
         fileInput("taqidres", label = "Upload ID_result.csv here")
       ),
-      checkboxInput("inpsybr", "3a) Input: SYBR"),
+      h5(strong("SYBR Green")),
+      checkboxInput("inpsybr", "Analysis - Biorad"),
       conditionalPanel(
         condition = "input.inpsybr == true",
         fileInput("sybr",
@@ -90,7 +92,25 @@ ui <- fluidPage(
                          numericInput("mincnvsybr", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
         )
       ),
-      checkboxInput("meltsybr", "3b) Analysis: SYBR Melting Curves"),
+      checkboxInput("inpsybrapp", "Analysis - Applied Quant Studio"),
+      conditionalPanel(
+        condition = "input.inpsybrapp == true",
+        fileInput("sybrapp",
+                  label = "Upload Applied Quant Studio xls/xlsx here",
+                  multiple = TRUE),
+        textInput("endocsybrapp", "Endogenous control", value = "RNAseP"),
+        numericInput("maxendocsybrapp", "Maximum cycle number for endogenous control", value = 35),
+        numericInput("posctrlsybrapp", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("minctsybrapp", "Sample is considered POSITIVE with Ct below:", value = 35),
+        radioButtons("dupssybrapp", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
+        numericInput("numposgensybrapp", "Number of positive genes to consider a sample POSITIVE", value = 1),
+        radioButtons("copiesforassigsybrapp", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
+        conditionalPanel(condition = "input.copiesforassigsybrapp == 'TRUE'",
+                         numericRangeInput("rangesybrapp", "Enter range:", value = c(35,40)),
+                         numericInput("mincnvsybrapp", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
+        )
+      ),
+      checkboxInput("meltsybr", "Melting Curves"),
       conditionalPanel(
         condition = "input.meltsybr == true",
         fileInput("sybrcsv",
@@ -156,7 +176,7 @@ ui <- fluidPage(
           tabPanel("Indet Plots", uiOutput("indetplots"))
         )
       ),
-      ###### 3) Main Panel for SYBR ########
+      ###### 3) Main Panel for BIORAD - SYBR ########
       conditionalPanel(
         condition = "input.inpsybr == true",
         tabsetPanel(
@@ -172,6 +192,24 @@ ui <- fluidPage(
           tabPanel("ID_Result", downloadButton("downIDRESsybr", "Download CSV"), tableOutput("IDRESsybr"))
         )
       ),
+      ############ SYBR - APPLIED #########
+      conditionalPanel(
+        condition = "input.inpsybrapp == true",
+        tabsetPanel(
+          id = "inpsybapp",
+          type = "tabs",
+          tabPanel("Raw Data", tableOutput("readappsybr")),
+          tabPanel("Run Information", tableOutput("sybrruninfoapp")),
+          tabPanel("Raw Data", tableOutput("sybrdataapp")),
+          tabPanel("Ct Plate", dataTableOutput("ctplatesybrapp")),
+          tabPanel("Sample Plate", dataTableOutput("sampleplatesybrapp")),
+          tabPanel("Standard Curve", tableOutput("stdcurvesybrapp"), plotOutput("stdsybrapp")),
+          tabPanel("Analysis", downloadButton("downansybrapp", "Download CSV"), dataTableOutput("analysissybrapp")),
+          tabPanel("ID_Well", downloadButton("downIDWELLsybrapp", "Download CSV"), tableOutput("IDWELLsybrapp")),
+          tabPanel("ID_Result", downloadButton("downIDRESsybrapp", "Download CSV"), tableOutput("IDRESsybrapp"))
+        )
+      ),
+      ########### MELTING CURVES ###########
       conditionalPanel(
         condition = "input.meltsybr == true",
         tabsetPanel(
