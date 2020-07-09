@@ -30,7 +30,7 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.taqexcel == true",
         fileInput("biorad", 
-                  label = "Upload BioRad CFX results file",
+                  label = "Upload BioRad CFX results file (csv/xlsx/xls)",
                   multiple = TRUE),
         textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
@@ -78,7 +78,7 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.inpsybr == true",
         fileInput("sybr",
-                  label = "Upload Excel or CSVs here",
+                  label = "Upload BioRad CFX results file (csv/xlsx/xls)",
                   multiple = TRUE),
         textInput("endocsybr", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocsybr", "Maximum cycle number for endogenous control", value = 35),
@@ -199,6 +199,7 @@ ui <- fluidPage(
           id = "inpsybapp",
           type = "tabs",
           tabPanel("Raw Data", tableOutput("readappsybr")),
+          tabPanel("Conversion", uiOutput("conversionsybrapp")),
           tabPanel("Run Information", tableOutput("sybrruninfoapp")),
           tabPanel("Raw Data", tableOutput("sybrdataapp")),
           tabPanel("Ct Plate", dataTableOutput("ctplatesybrapp")),

@@ -108,6 +108,7 @@ server <- function(input, output) {
         tmp <- as.data.frame(tbl_list[1]) %>%
           select(Well, Fluor, Target, Content,Sample, Cq)
         colnames(tmp) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+        
         ## Correct A1 to A01, etc
         newwell <- vector()
         for (i in tmp$Well){
@@ -130,8 +131,8 @@ server <- function(input, output) {
         df <- as.data.frame(dat)
         df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
         df <- as.data.frame(df)
+        colnames(df) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
         
-        ## Correct A1 to A01, etc
         newwell <- vector()
         for(i in df$Well){
           if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
@@ -141,8 +142,8 @@ server <- function(input, output) {
             newwell <- append(newwell, i)
           }
         }
+        
         df$Well <- newwell
-        colnames(df) <- c("Well", "Fluor", "Target", "Content","Sample", "Cq")
         df$Cq <- format(df$Cq, digits = 4)
         
         
@@ -152,7 +153,36 @@ server <- function(input, output) {
         ## Append to list
         tbl_list[[1]] <- df
         tbl_list[[2]] <- df2
+        
+      } else if (grepl("xls$", res$datapath[1]) == TRUE){
+        dat <- read_xls(res$datapath, sheet = "Data")
+        df <- as.data.frame(dat)
+        df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+        df <- as.data.frame(df)
+        colnames(df) <- c("Well", "Fluor", "Target", "Content", "ID", "Cq")
+        
+        newwell <- vector()
+        for(i in df$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        
+        df$Well <- newwell
+        df$Cq <- format(df$Cq, digits = 4)
+        
+        
+        ## Read Run Information
+        run <- read_xls(res$datapath, sheet = "Run Information")
+        df2 <- as.data.frame(run)
+        ## Append to list
+        tbl_list[[1]] <- df
+        tbl_list[[2]] <- df2
       }
+      
       ## Gene List
       inp <- tbl_list[[1]]
       genes <- unique(inp$Target)
@@ -384,7 +414,7 @@ server <- function(input, output) {
         a$Dilution <- c(NA, NA, dilsfin)
         
         ##Copies
-        copies<- lapply(a$Dilution, function(x){200000*2/x})
+        copies <- lapply(a$Dilution, function(x){200000*2/x})
         copies <- unlist(copies)
         a$Copies <- as.numeric(copies)
         
@@ -819,6 +849,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocbiorad){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocbiorad){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")] <- controlcq
 
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -990,6 +1030,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocbiorad){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocbiorad){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -1185,6 +1235,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocbiorad){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocbiorad){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -1251,6 +1311,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocbiorad){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocbiorad){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endoC,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -1357,8 +1427,6 @@ server <- function(input, output) {
     idres <- as.data.frame(cbind(id, an$Assignment))
     colnames(idres)<- c("ID", "Interpretation")
     idres <- idres[which(is.na(idres$Interpretation) == FALSE),]
-    #Remove Repeat from ID_Result (might give problems with the curves)
-    #idres <- idres[grep("Repeat", idres$Interpretation, invert = TRUE),]
     return(idres)
   }
   
@@ -1371,6 +1439,7 @@ server <- function(input, output) {
   output$IDRESULT <- renderTable(
     idresult()
   )
+  
   
   
   
@@ -1406,6 +1475,19 @@ server <- function(input, output) {
         df1 <- df[-c(1:start),1:4]
         colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
         
+        ## A1 to A01
+        newwell <- vector()
+        for(i in df1$Well_Position){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        
+        df1$Well_Position <- newwell
+        
         # Run Information
         df2 <- samples[1:(start-1),1:2]
         df2 <- as.data.frame(df2)
@@ -1431,6 +1513,18 @@ server <- function(input, output) {
         df1 <- df[-c(1:start),1:4]
         colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
         
+        ## A1 to A01
+        newwell <- vector()
+        for(i in df1$Well_Position){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        df1$Well_Position <- newwell
+        
         # Run Information
         df2 <- samples[1:(start-1),1:2]
         df2 <- as.data.frame(df2)
@@ -1455,52 +1549,85 @@ server <- function(input, output) {
     readApplied()[[1]]
   )
   
-  ################## Transposed Tab: Applied #####################
-  aggApplied <- function(){
-    df <- readApplied()[[1]]
-    final <- df %>%
-      pivot_wider(names_from = Cycle, values_from = Fluorescence)
-    
-    final <- as.data.frame(t(as.matrix(final)))
-    f <- final %>%
-      row_to_names(row_number = 2)
-    return(f)
+  ################## Read Results: Applied #####################
+  readAppliedResults <- function(){
+    res <- input$appl
+    if (!is.null(res)){
+      if (grepl("xlsx", res$datapath[1]) == TRUE){
+        samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
+        df <- data.frame(samples)
+        start <- grep("Well Position", df[[2]])
+        df <- df[-c(1:start),c(2,4,5,7,9)]
+        colnames(df) <- c("Well","ID", "Target","Fluor","Cq")
+        df$Cq <- format(df$Cq, digits = 4)
+        
+        newwell <- vector()
+        for(i in df$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        df$Well <- newwell
+        return(df)
+        
+      } else if (grepl("xls$", res$datapath[1]) == TRUE){
+        samples <- read_xls(res$datapath, sheet = "Results", na = "Undetermined")
+        df <- data.frame(samples)
+        start <- grep("Well Position", df[[2]])
+        df <- df[-c(1:start),c(2,4,5,7,9)]
+        colnames(df) <- c("Well","ID", "Target","Fluor","Cq")
+        df$Cq <- format(df$Cq, digits = 4)
+        
+        newwell <- vector()
+        for(i in df$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        df$Well <- newwell
+        return(df)
+      }
+    }
   }
   
-  ##### Render in App 
-  output$trans <- renderTable(
-    aggApplied()
-  )
-  
-  ################## Genes Tabs: Applied ######################
-  getGenes <- function(){
-    all <- aggApplied()
+  output$appliedres <- renderTable({
+    readAppliedResults()
+  })
+  ################## Conversion Tab: Applied #####################
+  conversionApplied <- function(){
+    df <- readApplied()[[1]]
+    res <- readAppliedResults()
+    colnames(res)[1] <- "Well_Position"
     
-    n1 <- vector()
-    n2 <- vector()
-    rnasep <- vector()
-    for (let in LETTERS[1:16]){
-      n1 <- append(n1,rep(paste(let,1:8,sep="")))
-      n2 <- append(n2,rep(paste(let,9:16,sep="")))
-      rnasep <- append(rnasep,rep(paste(let,17:24,sep="")))
-    }
+    m <- merge(df, res, by = "Well_Position")
+    m <- m[,c("Well_Position", "Cycle", "Fluorescence", "Target")]
+    m_s <- m[order(m$Cycle, m$Target), ]
     
-    allgenes <- list(n1,n2,rnasep)
+    final <- m_s %>%
+      group_by(Target) %>%
+      pivot_wider(names_from = Cycle, values_from = Fluorescence)
+    final <- as.data.frame(final)
+    rownames(final) <- final$Well_Position
+    final$Well_Position <- NULL
+    final_t<-t(final)
+    final_t_s <- final_t[order(as.numeric(rownames(final_t))),]
     
-    n1_nam <- match(unlist(allgenes[1]), names(all))
-    n1_def <- all[,n1_nam]
-    n1_def <- cbind(Cycle = 1:40, n1_def)
+    genes <- readApplied()[[3]]
     
-    n2_nam <- match(unlist(allgenes[2]), names(all))
-    n2_def <- all[,n2_nam]
-    n2_def <- cbind(Cycle = 1:40, n2_def)
+    l <- lapply(genes, function(x){
+      df <- final_t_s[, final_t_s["Target", ] == x]
+      df <- as.data.frame(df)
+      df <- df[!row.names(df) %in% "Target",]
+      rownames_to_column(df, "Cycle")
+      })
     
-    rnasep_nam <- match(unlist(allgenes[3]), names(all))
-    rnasep_def <- all[,rnasep_nam]
-    rnasep_def <- cbind(Cycle = 1:40, rnasep_def)
-    
-    final <- list(n1_def, n2_def, rnasep_def)
-    return(final)
+    return(l)
   }
   
   output$conversionapp <- renderUI({
@@ -1524,7 +1651,7 @@ server <- function(input, output) {
     ## Download Plots (Button)
     lapply(genes, function(x){
       output[[paste("down",x,sep="")]] <- renderUI({
-        ls <- getGenes()
+        ls <- conversionApplied()
         if (is.list(ls) == TRUE){
           downloadButton(paste("downl",x,sep=""), "Download CSV")
         } else{
@@ -1538,7 +1665,7 @@ server <- function(input, output) {
       output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
         filename = paste(genes[x],".csv",sep=""),
         content = function(fname){
-          write.csv(getGenes()[x], fname, quote = F, row.names = F)
+          write.csv(conversionApplied()[x], fname, quote = F, row.names = F)
         }
       )
     })
@@ -1546,7 +1673,7 @@ server <- function(input, output) {
     ## Render Tables
     lapply(nbgenes, function(x){
       output[[paste("trans",genes[x],sep="")]] <- renderTable({
-          getGenes()[x]
+        conversionApplied()[x]
       })
     })
     
@@ -1560,56 +1687,6 @@ server <- function(input, output) {
     } else {
       "No run information to show"
     }
-  })
-  
-  ################## Read Results: Applied #####################
-  readAppliedResults <- function(){
-    res <- input$appl
-    if (!is.null(res)){
-      if (grepl("xlsx", res$datapath[1]) == TRUE){
-        samples <- read_xlsx(res$datapath, sheet = "Results", na = "Undetermined")
-        df <- data.frame(samples)
-        start <- grep("Well Position", df[[2]])
-        df <- df[-c(1:start),c(2,4,5,7,9)]
-        colnames(df) <- c("Well","ID", "Target","Fluor","Cq")
-        tmp$Cq <- format(tmp$Cq, digits = 4)
-        
-        newwell <- vector()
-        for(i in df$Well){
-          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
-            stri_sub(i, 2, 1) <- 0
-            newwell <- append(newwell, i)
-          } else {
-            newwell <- append(newwell, i)
-          }
-        }
-        df$Well <- newwell
-        return(df)
-      } else if (grepl("xls$", res$datapath[1]) == TRUE){
-        samples <- read_xls(res$datapath, sheet = "Results", na = "Undetermined")
-        df <- data.frame(samples)
-        start <- grep("Well Position", df[[2]])
-        df <- df[-c(1:start),c(2,4,5,7,9)]
-        colnames(df) <- c("Well","ID", "Target","Fluor","Cq")
-        tmp$Cq <- format(tmp$Cq, digits = 4)
-        
-        newwell <- vector()
-        for(i in df$Well){
-          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
-            stri_sub(i, 2, 1) <- 0
-            newwell <- append(newwell, i)
-          } else {
-            newwell <- append(newwell, i)
-          }
-        }
-        df$Well <- newwell
-        return(df)
-      }
-    }
-  }
-  
-  output$appliedres <- renderTable({
-    readAppliedResults()
   })
   
   ################## Ct Plate Tab: Applied ##################
@@ -2258,6 +2335,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocapplied){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocapplied){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -2425,6 +2512,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocapplied){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocapplied){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -2619,6 +2716,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocapplied){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocapplied){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -2685,6 +2792,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocapplied){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocapplied){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocapplied,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -2798,7 +2915,6 @@ server <- function(input, output) {
     inp <- readAppliedResults()
     wellid <- cbind(inp$Well, as.character(inp$Target), inp$ID)
     wellid <- as.data.frame(wellid)
-    print(wellid)
     colnames(wellid) <- c("Well", "Target", "ID")
     return(wellid)
   }
@@ -2816,37 +2932,21 @@ server <- function(input, output) {
   ################## ID Result Tab: Applied ###################
   idresultApp <- function(){
     an <- AnalysisSamplesApp()
-    #int <- interpretationApp()
     realid <- unique(as.numeric(as.character(an$ID)))
     final <- as.data.frame(cbind(realid, an$Assignment))
     colnames(final)<- c("ID", "Interpretation")
     return(final)
   }
   
+  output$IDRESULTApp <- renderTable(
+    idresultApp()
+  )
+  
   output$downidresapp <- downloadHandler(
     filename = "ID_result.csv",
     content = function(fname){
       write.csv(idresultApp(), fname, quote = F, row.names = F)}
   )  
-  
-  output$IDRESULTApp <- renderTable(
-    idresultApp()
-  )
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   
   ################## CT CURVES - TAQMAN ##################
@@ -3310,7 +3410,38 @@ server <- function(input, output) {
         tbl_list[[1]] <- df
         tbl_list[[2]] <- df2
         
+      } else if (grepl("xls$", res$datapath[[1]][1]) == TRUE){
+        ## Read Data
+        dat <- read_xls(res$datapath, sheet = "Data")
+        df <- as.data.frame(dat)
+        df <- cbind(df$Well, df$Fluor, df$Target, df$Content ,df$Sample, df$Cq)
+        df <- as.data.frame(df)
+        colnames(df) <- c("Well", "Fluor", "Target", "Content","ID", "Cq")
+        df$Cq <- format(df$Cq, digits = 4)
+        
+        ## A01 to A1
+        newwell <- vector()
+        for(i in df$Well){
+          if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+            stri_sub(i, 2, 1) <- 0
+            newwell <- append(newwell, i)
+          } else {
+            newwell <- append(newwell, i)
+          }
+        }
+        df$Well <- newwell
+        colnames(df) <- c("Well", "Fluor", "Target", "Content","ID", "Cq")
+        
+        ## Read Run Information
+        run <- read_xls(res$datapath, sheet = "Run Information")
+        df2 <- as.data.frame(run)
+        
+        ## Append to list
+        tbl_list[[1]] <- df
+        tbl_list[[2]] <- df2
+        
       }
+      
       ## Gene List
       inp <- tbl_list[[1]]
       genes <- unique(inp$Target)
@@ -4050,6 +4181,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybr){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybr){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -4217,6 +4358,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybr){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybr){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -4413,6 +4564,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybr){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybr){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -4479,6 +4640,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybr){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybr){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybr,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -4579,8 +4750,9 @@ server <- function(input, output) {
   
   
   
+  
   ################ APPLIED - SYBR ##############
-  ###############################################
+  ##############################################
   
   ################## Read Applied "Raw Data" Sheet: SYBR-Applied ###################
   readAppliedSYBR <- function(){
@@ -4594,6 +4766,18 @@ server <- function(input, output) {
       start <- as.numeric(as.character(grep("Well Position", df[[2]])))
       df1 <- df[-c(1:start),1:4]
       colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
+      
+      newwell <- vector()
+      for(i in as.character(df1$Well_Position)){
+        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+          stri_sub(i, 2, 1) <- 0
+          newwell <- append(newwell, i)
+        } else {
+          newwell <- append(newwell, i)
+        }
+      }
+      df1$Well_Position <- newwell
+      
       
       # Run Information
       df2 <- samples[1:(start-1),1:2]
@@ -4620,6 +4804,18 @@ server <- function(input, output) {
       df1 <- df[-c(1:start),1:4]
       colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
       
+      
+      newwell <- vector()
+      for(i in df1$Well_Position){
+        if (grepl("^[[:upper:]][[:digit:]]$",i) == TRUE){
+          stri_sub(i, 2, 1) <- 0
+          newwell <- append(newwell, i)
+        } else {
+          newwell <- append(newwell, i)
+        }
+      }
+      df1$Well_Position <- newwell
+      
       # Run Information
       df2 <- samples[1:(start-1),1:2]
       df2 <- as.data.frame(df2)
@@ -4644,113 +4840,6 @@ server <- function(input, output) {
     readAppliedSYBR()[[1]]
   )
   
-  ################## Transposed Tab: SYBR-Applied #####################
-  aggApplied <- function(){
-    df <- readApplied()[[1]]
-    final <- df %>%
-      pivot_wider(names_from = Cycle, values_from = Fluorescence)
-    
-    final <- as.data.frame(t(as.matrix(final)))
-    f <- final %>%
-      row_to_names(row_number = 2)
-    return(f)
-  }
-  
-  ##### Render in App 
-  output$trans <- renderTable(
-    aggApplied()
-  )
-  
-  ################## Genes Tabs: SYBR-Applied ######################
-  getGenes <- function(){
-    all <- aggApplied()
-    
-    n1 <- vector()
-    n2 <- vector()
-    rnasep <- vector()
-    for (let in LETTERS[1:16]){
-      n1 <- append(n1,rep(paste(let,1:8,sep="")))
-      n2 <- append(n2,rep(paste(let,9:16,sep="")))
-      rnasep <- append(rnasep,rep(paste(let,17:24,sep="")))
-    }
-    
-    allgenes <- list(n1,n2,rnasep)
-    
-    n1_nam <- match(unlist(allgenes[1]), names(all))
-    n1_def <- all[,n1_nam]
-    n1_def <- cbind(Cycle = 1:40, n1_def)
-    
-    n2_nam <- match(unlist(allgenes[2]), names(all))
-    n2_def <- all[,n2_nam]
-    n2_def <- cbind(Cycle = 1:40, n2_def)
-    
-    rnasep_nam <- match(unlist(allgenes[3]), names(all))
-    rnasep_def <- all[,rnasep_nam]
-    rnasep_def <- cbind(Cycle = 1:40, rnasep_def)
-    
-    final <- list(n1_def, n2_def, rnasep_def)
-    return(final)
-  }
-  
-  output$conversionapp <- renderUI({
-    genes <- readApplied()[[3]]
-    nbgenes <- c(1:length(genes))
-    tabs <- lapply(genes, function(x){
-      tabPanel(
-        title = uiOutput(x),
-        uiOutput(paste("down",x,sep = "")),
-        tableOutput(paste("trans",x,sep=""))
-      )
-    })
-    
-    ## Tab Names
-    lapply(genes, function(x){
-      output[[x]] <- renderText({
-        x 
-      })
-    })
-    
-    ## Download Plots (Button)
-    lapply(genes, function(x){
-      output[[paste("down",x,sep="")]] <- renderUI({
-        ls <- getGenes()
-        if (is.list(ls) == TRUE){
-          downloadButton(paste("downl",x,sep=""), "Download CSV")
-        } else{
-          NULL
-        }
-      })
-    })
-    
-    ## Download Plots (Handler)
-    lapply(nbgenes, function(x){
-      output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
-        filename = paste(genes[x],".csv",sep=""),
-        content = function(fname){
-          write.csv(getGenes()[x], fname, quote = F, row.names = F)
-        }
-      )
-    })
-    
-    ## Render Tables
-    lapply(nbgenes, function(x){
-      output[[paste("trans",genes[x],sep="")]] <- renderTable({
-        getGenes()[x]
-      })
-    })
-    
-    do.call(tabsetPanel,c(tabs))
-  })
-  
-  ################## Read Run Info: SYBR-Applied ####################
-  output$sybrruninfoapp <- renderTable({
-    if (!is.null(readAppliedSYBR()[[2]])){
-      readAppliedSYBR()[[2]]
-    } else {
-      "No run information to show"
-    }
-  })
-  
   ################## Read Results: SYBR-Applied #####################
   readAppliedResultsSYBR <- function(){
     res <- input$sybrapp
@@ -4774,6 +4863,7 @@ server <- function(input, output) {
         }
         df$Well <- newwell
         return(df)
+        
       } else if (grepl("xls$", res$datapath[1]) == TRUE){
         samples <- read_xls(res$datapath, sheet = "Results", na = "Undetermined")
         df <- data.frame(samples)
@@ -4800,6 +4890,99 @@ server <- function(input, output) {
   
   output$sybrdataapp <- renderTable({
     readAppliedResultsSYBR()
+  })
+  
+  ################## Conversion Tab: SYBR-Applied #####################
+  conversionAppliedSYBR <- function(){
+    df <- readAppliedSYBR()[[1]]
+    res <- readAppliedResultsSYBR()
+    colnames(res)[1] <- "Well_Position"
+    
+    m <- merge(df, res, by = "Well_Position")
+    m <- m[,c("Well_Position", "Cycle", "Fluorescence", "Target")]
+    m_s <- m[order(m$Cycle, m$Target), ]
+    
+    
+    final <- m_s %>%
+      group_by(Target) %>%
+      pivot_wider(names_from = Cycle, values_from = Fluorescence)
+    
+    final <- as.data.frame(final)
+    rownames(final) <- final$Well_Position
+    final$Well_Position <- NULL
+    
+    final_t<-t(final)
+    final_t_s <- final_t[order(as.numeric(rownames(final_t))),]
+    
+    genes <- readAppliedSYBR()[[3]]
+    
+    l <- lapply(genes, function(x){
+      df <- final_t_s[, final_t_s["Target", ] == x]
+      df <- as.data.frame(df)
+      df <- df[!row.names(df) %in% "Target",]
+      rownames_to_column(df, "Cycle")
+    })
+    
+    return(l)
+  }
+  
+  output$conversionsybrapp <- renderUI({
+    genes <- readAppliedSYBR()[[3]]
+    nbgenes <- c(1:length(genes))
+    tabs <- lapply(genes, function(x){
+      tabPanel(
+        title = uiOutput(x),
+        uiOutput(paste("down",x,sep = "")),
+        tableOutput(paste("trans",x,sep=""))
+      )
+    })
+    
+    ## Tab Names
+    lapply(genes, function(x){
+      output[[x]] <- renderText({
+        x 
+      })
+    })
+    
+    ## Download Plots (Button)
+    lapply(genes, function(x){
+      output[[paste("down",x,sep="")]] <- renderUI({
+        ls <- conversionAppliedSYBR()
+        if (is.list(ls) == TRUE){
+          downloadButton(paste("downl",x,sep=""), "Download CSV")
+        } else{
+          NULL
+        }
+      })
+    })
+    
+    ## Download Plots (Handler)
+    lapply(nbgenes, function(x){
+      output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
+        filename = paste(genes[x],".csv",sep=""),
+        content = function(fname){
+          write.csv(conversionAppliedSYBR()[x], fname, quote = F, row.names = F)
+        }
+      )
+    })
+    
+    ## Render Tables
+    lapply(nbgenes, function(x){
+      output[[paste("trans",genes[x],sep="")]] <- renderTable({
+        conversionAppliedSYBR()[x]
+      })
+    })
+    
+    do.call(tabsetPanel,c(tabs))
+  })
+  
+  ################## Read Run Info: SYBR-Applied ####################
+  output$sybrruninfoapp <- renderTable({
+    if (!is.null(readAppliedSYBR()[[2]])){
+      readAppliedSYBR()[[2]]
+    } else {
+      "No run information to show"
+    }
   })
   
   ################## Ct Plate Tab: SYBR-Applied ##################
@@ -5437,6 +5620,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybrapp){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybrapp){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -5604,6 +5797,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybrapp){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybrapp){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -5798,6 +6001,16 @@ server <- function(input, output) {
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
       
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybrapp){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybrapp){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")] <- controlcq
+      
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
       ctassig <- vector()
@@ -5864,6 +6077,16 @@ server <- function(input, output) {
         })
         mean_cq_merged[[paste("CtCheck:",i,sep="")]] <- l
       }
+      
+      #### Repeat for wrong controls (> maxctendoc)
+      controlcq <- sapply(mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")], function(x){
+        if (as.numeric(as.character(x)) >= input$maxendocsybrapp){
+          "Repeat"
+        } else if (as.numeric(as.character(x)) < input$maxendocsybrapp){
+          as.numeric(as.character(x))
+        }
+      })
+      mean_cq_merged[,paste(input$endocsybrapp,"(MeanCq)", sep = "")] <- controlcq
       
       ## Final assignation according to Ct checks: FINAL ASSIGNMENT
       ctchecks <- mean_cq_merged[,grep("CtCheck", names(mean_cq_merged))]
@@ -6000,7 +6223,7 @@ server <- function(input, output) {
     return(final)
   }
   
-  output$downidresapp <- downloadHandler(
+  output$downIDRESsybrapp <- downloadHandler(
     filename = "ID_result.csv",
     content = function(fname){
       write.csv(idresultAppSYBR(), fname, quote = F, row.names = F)}

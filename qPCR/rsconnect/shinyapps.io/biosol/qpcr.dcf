@@ -5,6 +5,6 @@ account: biosol
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2540254
-bundleId: 3357000
+bundleId: 3367751
 url: https://biosol.shinyapps.io/qpcr/
-when: 1594026332.95911
+when: 1594222254.90509
