@@ -763,6 +763,7 @@ server <- function(input, output) {
     d$Cq <- as.numeric(d$Cq)
     d$ID <- as.character(d$ID)
     for (i in 1:length(d$Cq)){
+      print(is.na.data.frame(d[i, "Target"]))
       if(d[i,"Target"] != "" & is.na.data.frame(d[i,"Cq"]) == TRUE){
         d$Cq[i] <- 0
       } else if (d[i,"Target"] == ""){
@@ -930,17 +931,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
-                "Negative"
+              "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvbiorad){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -961,8 +962,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgenbiorad){
             "Positive"
-          }else if (pos < input$numposgenbiorad){
+          }else if (pos < input$numposgenbiorad & neg > pos){
             "Negative"
+          }else{
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -1108,17 +1111,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvbiorad){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvbiorad & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -1139,8 +1142,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgenbiorad){
             "Positive"
-          }else if (pos < input$numposgenbiorad){
+          }else if (pos < input$numposgenbiorad & neg > pos){
             "Negative"
+          } else{
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -2045,7 +2050,7 @@ server <- function(input, output) {
         colnames(control) <- c("Well","ID","Target","Fluor","Cq")
         negc <- control[grep("negC", control$ID),]
         negc$Cq <- as.numeric(negc$Cq)
-        a["C(-)", paste(unique(negc$Target),"Cq", sep="")] <- negc$Cq
+        a["C(-)", paste(unique(negc$Target),"(Cq)", sep="")] <- negc$Cq
         
         ## NTC
         ntc <- lapply(ctrls_sp, function(x){
@@ -2057,7 +2062,7 @@ server <- function(input, output) {
           df <- as.data.frame(df)
           colnames(df) <- c("Well","ID","Target","Fluor","Cq")
           df$Cq <- as.numeric(df$Cq)
-          a["NTC", paste(unique(df$Target),"Cq",sep = "")] <- df$Cq
+          a["NTC", paste(unique(df$Target),"(Cq)",sep = "")] <- df$Cq
         }
         
         ## Coefficients
@@ -2412,17 +2417,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvapplied){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -2443,8 +2448,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgenapplied){
             "Positive"
-          }else if (pos < input$numposgenapplied){
+          }else if (pos < input$numposgenapplied & neg > pos){
             "Negative"
+          } else{
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -2589,17 +2596,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvapplied){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvapplied & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -2620,8 +2627,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgenapplied){
             "Positive"
-          }else if (pos < input$numposgenapplied){
+          }else if (pos < input$numposgenapplied & neg > pos){
             "Negative"
+          } else {
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -3100,8 +3109,10 @@ server <- function(input, output) {
       
       ###plot
       pltName <- paste(genes[i])
-      pltList[[ pltName ]] = ggplot(data = merge, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
-        geom_line()+
+      merge$cols <- ifelse(merge$Interpretation == "Negative", 'tomato', ifelse(merge$Interpretation == "Positive", "green3", "blue"))
+      pltList[[ pltName ]] = ggplot(data = merge)+
+        geom_line(aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+        scale_color_manual(values = c("tomato", "green3", "blue"))+
         ylim(-100, lr[[1]])+ # manually adjust after seeing plot scale - keep same for all plots
         ggtitle(pltName)
     }
@@ -3136,7 +3147,7 @@ server <- function(input, output) {
       ## Read fluorescence data for target gene
       inp <- cyclesInput()
       raw <- inp[i][[1]]
-      #raw <- raw[,-1]
+      #raw <- raw[,-1]  
       raw <- raw[,df$Well2]
       raw_s <- stack(raw)
       raw_s$cycles<-rep(1:input$ct,lr[[2]]) # rep(1:cycle number,sample number x2 replicates)
@@ -3156,9 +3167,11 @@ server <- function(input, output) {
       pltList <- list()
       for (z in 1:length(merge_r_persample)){
         pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]], sep = "")
+        merge_pn$cols <- ifelse(merge_pn$Interpretation == "Negative", 'tomato', ifelse(merge_pn$Interpretation == "Positive", "green3", "blue"))
         pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
           geom_line()+
           geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+          scale_color_manual(values = c("tomato", "green3", "blue"))+
           ylim(-100, lr[[1]])+ 
           theme(legend.position = "none")+ 
           ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))
@@ -3239,112 +3252,6 @@ server <- function(input, output) {
     do.call(tabsetPanel,c(tabs))
     
   })
-  
-  'output$indetgen1 <- renderUI({
-    ls <- indetPlots()
-    print(str(ls))
-    if (is.character(ls) == TRUE){
-      textOutput("indetgen1")
-      print(ls)
-    } else {
-      plot_grid(plotlist = ls[[1]], ncol = 2)
-    }
-  })
-  
-  output$indetgen1 <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[1]], ncol = 2)
-  })
-  
-  ## Download plots
-  output$downlgen1 <- downloadHandler(
-    filename = ("N1_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[1]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  # N2 tab
-  output$indetgen2 <- renderUI({
-    ls <- indetPlots()
-    
-    if (is.vector(ls) == TRUE){
-      textOutput("indetgen2")
-      print(ls)
-    } else {
-      plot_grid(plotlist = ls[[2]], ncol = 2)
-    }
-  })
-  
-  output$indetgen2 <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[2]], ncol = 2)
-  })
-  
-  
-  ## Download plots
-  output$downlgen2 <- downloadHandler(
-    filename = ("N2_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[2]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  #RNAsep tab
-  output$indetgen3 <- renderUI({
-    ls <- indetPlots()
-    if (is.vector(ls) == TRUE){
-      textOutput("indetgen3")
-      print(ls)
-    } else {
-      plot_grid(plotlist = ls[[3]], ncol = 2)
-    }
-  })
-  
-  output$indetgen3 <- renderPlot({
-    ls <- indetPlots()
-    plot_grid(plotlist = ls[[3]], ncol = 2)
-  })
-  
-  ## Download plots
-  output$downlgen3 <- downloadHandler(
-    filename = ("RNAseP_IndetPlots.pdf"),
-    content = function(file){
-      plots <- indetPlots()
-      p <- plot_grid(plotlist = plots[[3]], ncol = 2)
-      save_plot(file, p, ncol = 2, paper="a4")
-    }
-  )
-  
-  output$gen1 <- renderText({
-    geneList()[1]
-  })
-  
-  output$gen2 <- renderText({
-    geneList()[2]
-  })
-  
-  output$gen3 <- renderText({
-    geneList()[3]
-  })'
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   
   
@@ -3824,7 +3731,7 @@ server <- function(input, output) {
             tmp_s <- str_split(tmp$ID[1], "_")
             tmp_s <- unlist(tmp_s)
             if (!is.na(tmp_s[1])){
-              a[tmp_s[2],paste(unique(tmp$Target),"Cq",sep="")] <- tmp$Cq
+              a[tmp_s[2],paste(unique(tmp$Target),"(Cq)",sep="")] <- tmp$Cq
             }
           }
         }
@@ -3835,7 +3742,7 @@ server <- function(input, output) {
         colnames(control) <- c("Well","Fluor","Target","Content","ID","Cq")
         negc <- control[grep("negC", control$ID),]
         negc$Cq <- as.numeric(negc$Cq)
-        a["C(-)", paste(unique(negc$Target),"Cq", sep="")] <- negc$Cq
+        a["C(-)", paste(unique(negc$Target),"(Cq)", sep="")] <- negc$Cq
         
         ## NTC
         ntc <- lapply(ctrls_sp, function(x){
@@ -3847,7 +3754,7 @@ server <- function(input, output) {
           df <- as.data.frame(df)
           colnames(df) <- c("Well","Fluor","Target","Content","ID","Cq")
           df$Cq <- as.numeric(df$Cq)
-          a["NTC", paste(unique(df$Target),"Cq",sep = "")] <- df$Cq
+          a["NTC", paste(unique(df$Target),"(Cq)",sep = "")] <- df$Cq
         }
         
         ## Coefficients
@@ -4259,17 +4166,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybr){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -4290,8 +4197,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgensybr){
             "Positive"
-          }else if (pos < input$numposgensybr){
+          }else if (pos < input$numposgensybr & neg > pos){
             "Negative"
+          } else {
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -4443,11 +4352,11 @@ server <- function(input, output) {
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybr){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybr & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
             } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
               NA
-            }
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -4468,8 +4377,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgensybr){
             "Positive"
-          }else if (pos < input$numposgensybr){
+          }else if (pos < input$numposgensybr & neg > pos){
             "Negative"
+          } else {
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -5332,7 +5243,7 @@ server <- function(input, output) {
             tmp_s <- str_split(tmp$ID[1], "_")
             tmp_s <- unlist(tmp_s)
             if (!is.na(tmp_s[1])){
-              a[tmp_s[2],paste(unique(tmp$Target),"Cq",sep="")] <- tmp$Cq
+              a[tmp_s[2],paste(unique(tmp$Target),"(Cq)",sep="")] <- tmp$Cq
             }
           }
         }
@@ -5343,7 +5254,7 @@ server <- function(input, output) {
         colnames(control) <- c("Well","ID","Target","Fluor","Cq")
         negc <- control[grep("negC", control$ID),]
         negc$Cq <- as.numeric(negc$Cq)
-        a["C(-)", paste(unique(negc$Target),"Cq", sep="")] <- negc$Cq
+        a["C(-)", paste(unique(negc$Target),"(Cq)", sep="")] <- negc$Cq
         
         ## NTC
         ntc <- lapply(ctrls_sp, function(x){
@@ -5355,7 +5266,7 @@ server <- function(input, output) {
           df <- as.data.frame(df)
           colnames(df) <- c("Well","ID","Target","Fluor","Cq")
           df$Cq <- as.numeric(df$Cq)
-          a["NTC", paste(unique(df$Target),"Cq",sep = "")] <- df$Cq
+          a["NTC", paste(unique(df$Target),"(Cq)",sep = "")] <- df$Cq
         }
         
         ## Coefficients
@@ -5697,17 +5608,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
             } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybrapp){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybrapp){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybrapp & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -5728,8 +5639,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgensybrapp){
             "Positive"
-          }else if (pos < input$numposgensybrapp){
+          }else if (pos < input$numposgensybrapp & neg > pos){
             "Negative"
+          } else{
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -5874,17 +5787,17 @@ server <- function(input, output) {
           if (x[["FinalCtCheck"]] == "Check copy number"){
             if (x[[paste(i,"(Copies)",sep="")]] == "-"){
               "-"
-            } else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
-              NA
-            } else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
+            }else if (x[[paste(i,"(Copies)",sep="")]] == "Repeat"){
               "Repeat"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) == 0){
               "Negative"
             } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) >= input$mincnvsybrapp){
               "Positive"
-            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybrapp){
+            } else if (as.numeric(x[[paste(i,"(Copies)",sep="")]]) < input$mincnvsybrapp & as.numeric(x[[paste(i,"(Copies)",sep="")]]) != 0){
               "Repeat"
-            }
+            }  else if (is.na(as.numeric(x[[paste(i,"(Copies)",sep="")]])) == TRUE){
+              NA
+            } 
           } else if (x[["FinalCtCheck"]] != "Check copy number"){
             "-"
           }
@@ -5905,8 +5818,10 @@ server <- function(input, output) {
             "Repeat"
           }else if (pos >= input$numposgensybrapp){
             "Positive"
-          }else if (pos < input$numposgensybrapp){
+          }else if (pos < input$numposgensybrapp & neg > pos){
             "Negative"
+          }else{
+            "Repeat"
           }
         } else if (x[["FinalCtCheck"]] != "Check copy number"){
           "-"
@@ -6233,6 +6148,7 @@ server <- function(input, output) {
     idresultAppSYBR()
   )
 
+    
   ################### MELTING CURVE - SYBR ###### ###################
   
   ###############################################
@@ -6257,13 +6173,14 @@ server <- function(input, output) {
     return(out)
   }
   
-  ################## Well ID: SYBR ###########
+  ################## ID Well: SYBR ###########
   wellID <- function(){
     raw <- input$wellid
     if (!is.null(raw)){
       data = read.csv(raw$datapath, sep = ',', header = TRUE, dec=',');
       ## Correct Well names, adds new column called Well2 to data 
       data$Well2<-sub('(^[A-Z]+)0', "\\1", data$Well, perl=TRUE) #replace f.i. A01 by A1
+      colnames(data) <- c("Well", "Target", "ID", "Well2")
       return(data)
     }else{
       return (NULL);
@@ -6272,7 +6189,7 @@ server <- function(input, output) {
   
   ## b) Call function and display in app
   output$well <- renderTable({
-    newWell = wellID()
+    newWell <- wellID()[,c("Well", "Target", "ID")]
     if(is.null(newWell)){
       return();
     }else{
@@ -6315,25 +6232,6 @@ server <- function(input, output) {
   output$fluosgene <- renderTable({
     matchAllTarget()
   })
-  
-  '############ Fluo Temp Tab: SYBR ###############
-  fluoTemp <- function(){
-    fluos_gene <- matchAllTarget()
-    melt_gene <- TMinput()
-    genes <- SybrGeneList()
-    LsforPlot <- list()
-    for (i in 1:length(genes)){
-      fluo_temp <- cbind(melt_gene[[i]]$Temperature, fluos_gene[[i]])
-      #fluo_temp <- fluos_gene[[i]]
-      #colnames(fluo_temp)[1] <- "Temperature"
-      LsforPlot[[i]] <- fluo_temp
-    }
-    return(LsforPlot)
-  }
-  
-  output$fluotemp <-renderTable({
-    fluoTemp()
-  })'
   
   ################## Melting Curve Plots: SYBR ##################
   # Function to Repeat temperature columns
@@ -6412,71 +6310,6 @@ server <- function(input, output) {
     
     do.call(tabsetPanel,c(tabs))
   })
-  
-  'output$sybrN <- renderPlot({
-    tm <- TMinput()
-    genes <- SybrGeneList()
-    TMPlots(tm[[1]], genes[[1]])
-  })
-  
-  output$sybrRdrp <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[2]], genes[[2]])
-  })
-  
-  output$sybrRpp30 <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[3]], genes[[3]])
-  })
-  
-  output$sybrS <- renderPlot({
-    genes <- SybrGeneList()
-    tm <- TMinput()
-    TMPlots(tm[[4]], genes[[4]])
-  })
-  
-  ## c) Downloads
-  output$downsybrN <- downloadHandler(
-    filename = ("N_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[1]], genes[[1]])
-      dev.off()
-    })
-  
-  output$downsybrRdrp <- downloadHandler(
-    filename = ("Rdrp_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[2]], genes[[2]])
-      dev.off()
-    })
-  
-  output$downsybrRpp30 <- downloadHandler(
-    filename = ("Rdrp_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[3]], genes[[3]])
-      dev.off()
-    })
-  
-  output$downsybrS <- downloadHandler(
-    filename = ("S_TMPlots.pdf"),
-    content = function(file){
-      pdf(file)
-      tm <- TMinput()
-      genes <- SybrGeneList()
-      p <- TMPlots(tm[[4]], genes[[4]])
-      dev.off()
-    })'
   
   ################## TM Results: SYBR #######################
   ## 7) Load data and generate output table

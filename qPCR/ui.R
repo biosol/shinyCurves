@@ -114,9 +114,9 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.meltsybr == true",
         fileInput("sybrcsv",
-                  label="Upload CSV here",
+                  label="Upload CSVs here",
                   multiple = TRUE),
-        numericInput("cutarea", "Enter cut.Area value", value = 10),
+        numericInput("cutarea", "Enter cutoff area value", value = 10),
         textInput("lowertmborder", "Enter lower Tm border", value = 0.5),
         textInput("uppertmborder", "Enter upper Tm border", value = 0.5),
         radioButtons("isderiv", "Are your data already in first derivative transformed format?",
@@ -173,7 +173,7 @@ ui <- fluidPage(
           tabPanel("ID_Well", tableOutput("taqmanwell")),
           tabPanel("ID_Result", tableOutput("taqmanidres")),
           tabPanel("General Plots", downloadButton("downgen", "Download PDF"), plotOutput("genplots", height = "1000px")),
-          tabPanel("Indet Plots", uiOutput("indetplots"))
+          tabPanel("Indetermined Plots", uiOutput("indetplots"))
         )
       ),
       ###### 3) Main Panel for BIORAD - SYBR ########
@@ -216,8 +216,8 @@ ui <- fluidPage(
         tabsetPanel(
           id = "syb",
           type = "tabs",
-          tabPanel("ID_well", tableOutput("well")),
-          tabPanel("TM Plots", uiOutput("tmplots")),
+          tabPanel("ID_Well", tableOutput("well")),
+          tabPanel("Melting Curve Plots", uiOutput("tmplots")),
           tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"),
                    tableOutput("tmtable")
           )
