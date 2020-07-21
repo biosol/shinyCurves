@@ -35,6 +35,7 @@ ui <- fluidPage(
         textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
         numericInput("posctrlbiorad", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("concstdbiorad", "Enter standard concentration", value = 400000),
         numericInput("minctbiorad", "Sample is considered POSITIVE with Ct below:", value = 35),
         numericInput("cyclesbiorad", "What is your maximum cycle number?", value = 40),
         radioButtons("dupsbiorad", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
@@ -53,6 +54,7 @@ ui <- fluidPage(
         textInput("endocapplied", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocapplied", "Maximum cycle number for endogenous control", value = 35),
         numericInput("posctrlapplied", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("concstdapplied", "Enter standard concentration", value = 400000),
         numericInput("minctapplied", "Sample is considered POSITIVE with Ct below:", value = 35),
         numericInput("cyclesapplied", "What is your maximum cycle number?", value = 40),
         radioButtons("dupsapplied", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
@@ -89,9 +91,7 @@ ui <- fluidPage(
         radioButtons("isderiv", "Are your data already in first derivative transformed format?",
                      choices = c(Yes = TRUE,
                                  No = FALSE),
-                     selected = TRUE),
-        fileInput("wellid",
-                  label="Upload ID_well.csv here")
+                     selected = TRUE)
       ),
       checkboxInput("inpsybr", "Analysis - Biorad"),
       conditionalPanel(
@@ -103,13 +103,13 @@ ui <- fluidPage(
         textInput("endocsybr", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocsybr", "Maximum cycle number for endogenous control", value = 35),
         numericInput("posctrlsybr", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("concstdsybr", "Enter standard concentration", value = 400000),
         numericInput("minctsybr", "Sample is considered POSITIVE with Ct below:", value = 35),
         numericInput("cyclessybr", "What is your maximum cycle number?", value = 40),
         radioButtons("dupssybr", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
-        numericInput("numposgensybr", "Number of positive genes to consider a sample POSITIVE", value = 1),
+        numericInput("numposgensybr", "Number of positive genes to consider a sample POSITIVE", value = 2),
         radioButtons("copiesforassigsybr", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
         conditionalPanel(condition = "input.copiesforassigsybr == 'TRUE'",
-                         #numericRangeInput("rangesybr", "Enter range:", value = c(35,40)),
                          numericInput("mincnvsybr", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
         )
       ),
@@ -119,16 +119,17 @@ ui <- fluidPage(
         fileInput("sybrapp",
                   label = "Upload Applied Quant Studio xls/xlsx here",
                   multiple = TRUE),
+        fileInput("idwellsybrapp", label = "Upload ID_well here", multiple = FALSE),
         textInput("endocsybrapp", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocsybrapp", "Maximum cycle number for endogenous control", value = 35),
         numericInput("posctrlsybrapp", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("concstdsybrapp", "Enter standard concentration", value = 400000),
         numericInput("minctsybrapp", "Sample is considered POSITIVE with Ct below:", value = 35),
         numericInput("cyclessybrapp", "What is your maximum cycle number?", value = 40),
         radioButtons("dupssybrapp", "Do you use duplicates?", choices = c(Yes = TRUE, No = FALSE), selected = TRUE),
-        numericInput("numposgensybrapp", "Number of positive genes to consider a sample POSITIVE", value = 1),
+        numericInput("numposgensybrapp", "Number of positive genes to consider a sample POSITIVE", value = 2),
         radioButtons("copiesforassigsybrapp", "Do you want to use the estimated copy number as a result assignation criteria?", choices = c(Yes=TRUE, No=FALSE), selected = TRUE),
         conditionalPanel(condition = "input.copiesforassigsybrapp == 'TRUE'",
-                         #numericRangeInput("rangesybrapp", "Enter range:", value = c(35,40)),
                          numericInput("mincnvsybrapp", "Sample is considered POSITIVE with estimated copies value above:", value = 4)
         )
       ),
@@ -190,6 +191,7 @@ ui <- fluidPage(
           id = "syb",
           type = "tabs",
           tabPanel("ID_Well", tableOutput("rawidwell")),
+          tabPanel("Raw Data", tableOutput("rawdata")),
           tabPanel("Melting Curve Plots", uiOutput("tmplots")),
           tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), tableOutput("tmtable")),
           tabPanel("New ID_Well", downloadButton("downnewidwell", "Download CSV"), tableOutput("newidwell"))
@@ -216,15 +218,13 @@ ui <- fluidPage(
         tabsetPanel(
           id = "inpsybapp",
           type = "tabs",
-          tabPanel("Raw Data", tableOutput("readappsybr")),
-          tabPanel("Conversion", uiOutput("conversionsybrapp")),
+          tabPanel("ID_Well", tableOutput("IDWELLsybrapp")),
           tabPanel("Run Information", tableOutput("sybrruninfoapp")),
           tabPanel("Raw Data", tableOutput("sybrdataapp")),
           tabPanel("Ct Plate", dataTableOutput("ctplatesybrapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybrapp")),
           tabPanel("Standard Curve", tableOutput("stdcurvesybrapp"), plotOutput("stdsybrapp")),
           tabPanel("Analysis", downloadButton("downansybrapp", "Download CSV"), dataTableOutput("analysissybrapp")),
-          tabPanel("ID_Well", downloadButton("downIDWELLsybrapp", "Download CSV"), tableOutput("IDWELLsybrapp")),
           tabPanel("ID_Result", downloadButton("downIDRESsybrapp", "Download CSV"), tableOutput("IDRESsybrapp"))
         )
       )
