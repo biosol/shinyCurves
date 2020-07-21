@@ -3258,6 +3258,7 @@ server <- function(input, output) {
     
   
   
+  
   ################### MELTING CURVE - SYBR #########################
   ###############################################
   
@@ -3554,14 +3555,14 @@ server <- function(input, output) {
       } else {
         if (grepl("xlsx",dat$datapath[1]) == TRUE){
           ## Data
-          samples <- read_xlsx(dat$datapath, sheet = "Raw Data")
+          samples <- read_xlsx(dat$datapath, sheet = "Melt Curve Raw Data")
           df <- as.data.frame(samples)
           start <- as.numeric(as.character(grep("Well Position", df[[2]])))
           names(df) <- df[start,]
           dfi <- df[-c(1:start),]
           df1 <- dfi %>%
-            select("Well", "Well Position", "Cycle","x1-m1")
-          colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
+            select("Well", "Well Position","Temperature", "Fluorescence")
+          colnames(df1) <- c("Well", "Well_Position", "Temperature","Fluorescence")
           
           newwell <- vector()
           for(i in as.character(df1$Well_Position)){
@@ -3575,18 +3576,42 @@ server <- function(input, output) {
           df1$Well_Position <- newwell
           
           idwell <- readSYBRIDWell()
+          colnames(idwell) <- c("Well_Position", "Target", "ID")
+          m <- merge(df1, idwell, by = "Well_Position")
+          m <- m[,c("Well_Position", "Temperature", "Fluorescence", "Target")]
+          m_s <- m[order(m$Temperature, m$Target), ]
           
-          return(df1)
+          final <- m_s %>%
+            group_by(Target) %>%
+            pivot_wider(names_from = Temperature, values_from = Fluorescence)
+          
+          final <- as.data.frame(final)
+          rownames(final) <- final$Well_Position
+          final$Well_Position <- NULL
+          
+          final_t<-t(final)
+          final_t_s <- final_t[order(as.numeric(rownames(final_t))),]
+          
+          genes <- unique(idwell$Target)
+          
+          l <- lapply(genes, function(x){
+            df <- final_t_s[, final_t_s["Target", ] == x]
+            df <- as.data.frame(df)
+            df <- df[!row.names(df) %in% "Target",]
+            rownames_to_column(df, "Temperature")
+          })
+          
+          return(l)
           
         } else if (grepl("xls$",dat$datapath[1]) == TRUE){
-          samples <- read_xlsx(dat$datapath, sheet = "Raw Data")
+          samples <- read_xls(dat$datapath, sheet = "Melt Curve Raw Data")
           df <- as.data.frame(samples)
           start <- as.numeric(as.character(grep("Well Position", df[[2]])))
           names(df) <- df[start,]
           dfi <- df[-c(1:start),]
           df1 <- dfi %>%
-            select("Well", "Well Position", "Cycle","x1-m1")
-          colnames(df1) <- c("Well", "Well_Position", "Cycle","Fluorescence")
+            select("Well", "Well Position","Temperature", "Fluorescence")
+          colnames(df1) <- c("Well", "Well_Position", "Temperature","Fluorescence")
           
           newwell <- vector()
           for(i in as.character(df1$Well_Position)){
@@ -3598,7 +3623,34 @@ server <- function(input, output) {
             }
           }
           df1$Well_Position <- newwell
-          return(df1)
+          
+          idwell <- readSYBRIDWell()
+          colnames(idwell) <- c("Well_Position", "Target", "ID")
+          m <- merge(df1, idwell, by = "Well_Position")
+          m <- m[,c("Well_Position", "Temperature", "Fluorescence", "Target")]
+          m_s <- m[order(m$Temperature, m$Target), ]
+          
+          final <- m_s %>%
+            group_by(Target) %>%
+            pivot_wider(names_from = Temperature, values_from = Fluorescence)
+          
+          final <- as.data.frame(final)
+          rownames(final) <- final$Well_Position
+          final$Well_Position <- NULL
+          
+          final_t<-t(final)
+          final_t_s <- final_t[order(as.numeric(rownames(final_t))),]
+          
+          genes <- unique(idwell$Target)
+          
+          l <- lapply(genes, function(x){
+            df <- final_t_s[, final_t_s["Target", ] == x]
+            df <- as.data.frame(df)
+            df <- df[!row.names(df) %in% "Target",]
+            rownames_to_column(df, "Temperature")
+          })
+          print(str(l))
+          return(l)
         }
       }
     }
@@ -3611,11 +3663,38 @@ server <- function(input, output) {
   ################## Gene List: SYBR ###########
   SybrGeneList <- function(){
     dat <- input$sybrcsv
-    lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
-                                                   basename(dat$name)))
-    lst <- unlist(lst)
-    out <- unique(lst)
-    return(out)
+    if (length(dat$datapath) != 1){
+      lst <- lapply(dat$name, FUN = function(x) gsub(pattern = ".*[_]([^.]+)[.].*", replacement = "\\1",
+                                                     basename(dat$name)))
+      lst <- unlist(lst)
+      out <- unique(lst)
+      return(out)
+    } else {
+      if (grepl("xlsx",dat$datapath[1]) == TRUE){
+        dat <- read_xlsx(dat$datapath, sheet = "Results")
+        df <- as.data.frame(dat)
+        start <- as.numeric(as.character(grep("Well Position", df[[2]])))
+        names(df) <- df[start,]
+        dfi <- df[-c(1:start),]
+        df1 <- dfi %>%
+          select("Target Name")
+        colnames(df1) <- "Target"
+        genes <- as.vector(unique(df1$Target))
+        return(genes)
+      } else if (grepl("xls$",dat$datapath[1]) == TRUE){
+        dat <- read_xls(dat$datapath, sheet = "Results")
+        df <- as.data.frame(dat)
+        start <- as.numeric(as.character(grep("Well Position", df[[2]])))
+        names(df) <- df[start,]
+        dfi <- df[-c(1:start),]
+        df1 <- dfi %>%
+          select("Target Name")
+        colnames(df1) <- "Target"
+        genes <- as.vector(unique(df1$Target))
+        return(genes)
+      }
+    }
+    
   }
   
   ################## Fluos_Gene Tab: SYBR ###############
@@ -3629,6 +3708,8 @@ server <- function(input, output) {
     
     Well$Well <- as.character(sub('(?<![0-9])0*(?=[0-9])', '', Well$Well, perl=TRUE))
     well_gene <- Well[which(Well$Target==gene),] # select target
+    
+    colnames(well_gene) <- c("Well", "Target", "ID")
     
     #Select fluorescence matching columns
     fluos_gene <- tm[,well_gene$Well]
