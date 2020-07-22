@@ -80,10 +80,10 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.meltsybr == true",
         fileInput("sybrcsv",
-                  label="Upload CSVs here",
+                  label="Upload Melt Curve RFU results (Biorad/Applied) here ",
                   multiple = TRUE),
         fileInput("sybrinp", 
-                  label = "Upload BioRad CFX results file (csv/xlsx/xls)",
+                  label = "Upload Quantification Results (Biorad/Applied) here",
                   multiple = FALSE),
         numericInput("cutarea", "Enter cutoff area value", value = 10),
         textInput("lowertmborder", "Enter lower Tm border", value = 0.5),
@@ -191,7 +191,6 @@ ui <- fluidPage(
           id = "syb",
           type = "tabs",
           tabPanel("ID_Well", tableOutput("rawidwell")),
-          tabPanel("Raw Data", tableOutput("rawdata")),
           tabPanel("Melting Curve Plots", uiOutput("tmplots")),
           tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), tableOutput("tmtable")),
           tabPanel("New ID_Well", downloadButton("downnewidwell", "Download CSV"), tableOutput("newidwell"))
