@@ -393,7 +393,7 @@ server <- function(input, output) {
       
       ## If user has duplicates (also using the # of positive controls that the users has specified to generate # of lines for table)
       if(input$dupsbiorad == TRUE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+(length(genes)*2)+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+(length(genes)*2)+length(genes)*3))
         
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
@@ -459,7 +459,7 @@ server <- function(input, output) {
         a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")] <- negc$Cq[1]
         a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")] <- negc$Cq[2]
         a["C(-)", paste(unique(negc$Target),"(Avg)",sep="")] <- mean(c(a["C(-)", paste(unique(negc$Target),"(Dup1)",sep="")],a["C(-)", paste(unique(negc$Target),"(Dup2)",sep="")]), na.rm = TRUE)
-        
+
         ## NTC
         ntc <- lapply(ctrls_sp, function(x){
           x[grep("NTC", x$ID),]
@@ -498,14 +498,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -515,7 +515,7 @@ server <- function(input, output) {
         
         ## If user has no duplicates
       } else if (input$dupsbiorad == FALSE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlbiorad), ncol = 3+length(genes)*3))
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
         l <- lapply(genes, function(x){
@@ -611,14 +611,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -1900,7 +1900,7 @@ server <- function(input, output) {
       
       ## If user has duplicates (also using the # of positive controls that the users has specified to generate # of lines for table)
       if(input$dupsapplied == TRUE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlapplied), ncol = 3+(length(genes)*2)+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlapplied), ncol = 3+(length(genes)*2)+length(genes)*3))
         
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
@@ -2005,14 +2005,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -2022,7 +2022,7 @@ server <- function(input, output) {
         
         ## If user has no duplicates
       } else if (input$dupsapplied == FALSE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlapplied), ncol = 3+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlapplied), ncol = 3+length(genes)*3))
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
         l <- lapply(genes, function(x){
@@ -2118,14 +2118,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -4090,9 +4090,10 @@ server <- function(input, output) {
   }
   
   output$sybrruninfo <- renderTable(
-    if (!is.null(readSYBR()[3])){
-      readSYBR()[3]
-    } else {
+    if (!is.null(readSYBR()[[3]])){
+      print(readSYBR()[3])
+      readSYBR()[[3]]
+    } else if (is.null(readSYBR()[[3]]) == TRUE) {
       "No run information to show"
     }
   )
@@ -4211,7 +4212,7 @@ server <- function(input, output) {
       
       ## If user has duplicates (also using the # of positive controls that the users has specified to generate # of lines for table)
       if(input$dupssybr == TRUE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlsybr), ncol = 3+(length(genes)*2)+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlsybr), ncol = 3+(length(genes)*2)+length(genes)*3))
         
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
@@ -4319,14 +4320,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -4336,7 +4337,7 @@ server <- function(input, output) {
         
         ## If user has no duplicates
       } else if (input$dupssybr == FALSE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlsybr), ncol = 3+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlsybr), ncol = 3+length(genes)*3))
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
         l <- lapply(genes, function(x){
@@ -4431,14 +4432,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -5445,7 +5446,7 @@ server <- function(input, output) {
         df3 <- as.data.frame(df3)
         
         # List of genes
-        genes <- read_xlsx(res$datapath, sheet = "Results")
+        genes <- read_xls(res$datapath, sheet = "Results")
         df <- as.data.frame(genes)
         df4 <- df[-c(1:start),5]
         df4 <- unique(df4)
@@ -5579,7 +5580,7 @@ server <- function(input, output) {
       
       ## If user has duplicates (also using the # of positive controls that the users has specified to generate # of lines for table)
       if(input$dupssybrapp == TRUE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlsybrapp), ncol = 3+(length(genes)*2)+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlsybrapp), ncol = 3+(length(genes)*2)+length(genes)*3))
         
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
@@ -5684,14 +5685,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
@@ -5701,7 +5702,7 @@ server <- function(input, output) {
         
         ## If user has no duplicates
       } else if (input$dupssybrapp == FALSE){
-        a <- data.frame(matrix(0, nrow = 2+as.numeric(input$posctrlsybrapp), ncol = 3+length(genes)*3))
+        a <- data.frame(matrix(NA, nrow = 2+as.numeric(input$posctrlsybrapp), ncol = 3+length(genes)*3))
         #Prepare colnames
         colnames(a)[1:3] <- c("Dilution","Copies","logCopies")
         l <- lapply(genes, function(x){
@@ -5797,14 +5798,14 @@ server <- function(input, output) {
             if(is.na(avgs[i,j]) == TRUE){
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else if (avgs[i,j] == 0){
-              a[i, paste(genes[j],"(LogCopies)", sep="")] <- 0
+              a[i, paste(genes[j],"(LogCopies)", sep="")] <- NA
             } else {
               a[i, paste(genes[j],"(LogCopies)", sep="")] <- avgs[i,j]*unlist(coefficients[2,j])+unlist(coefficients[1,j])
             }
             if (is.na(a[i, paste(genes[j],"(LogCopies)", sep="")]) == TRUE){
               a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else if(a[i, paste(genes[j],"(LogCopies)", sep="")] == 0){
-              a[i, paste(genes[j],"(Copies)", sep="")] <- 0
+              a[i, paste(genes[j],"(Copies)", sep="")] <- NA
             } else{
               a[i, paste(genes[j],"(Copies)", sep="")] <- 10^a[i, paste(genes[j],"(LogCopies)", sep="")]
             }
