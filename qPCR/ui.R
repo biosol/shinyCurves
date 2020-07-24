@@ -91,7 +91,7 @@ ui <- fluidPage(
         radioButtons("isderiv", "Are your data already in first derivative transformed format?",
                      choices = c(Yes = TRUE,
                                  No = FALSE),
-                     selected = TRUE)
+                     selected = FALSE)
       ),
       checkboxInput("inpsybr", "Analysis - Biorad"),
       conditionalPanel(

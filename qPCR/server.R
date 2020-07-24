@@ -4617,6 +4617,9 @@ server <- function(input, output) {
           # Check that duplicates exist (2 rows)
             if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
               div <- NA
+            } else if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1){
+              not0 <- as.numeric(grep("^0$", as.character(y$Cq), invert = TRUE, value = TRUE))
+              div <- abs(not0-not0) 
             } else {
               div <- abs(y$Cq[1]-y$Cq[2])
               if (is.na(div) == TRUE){
@@ -4625,12 +4628,21 @@ server <- function(input, output) {
             }
           
             # Check if difference between dups is > 1.5
-            if (is.na(div) == TRUE){
+            if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1 & div == 0){
+              byidemean <- grep("^0", as.character(y$Cq), invert = TRUE, value = TRUE)
+              byidemean <- as.numeric(byidemean)
+            } else if (length(y$Cq) == 1){
+              if (is.na(y$Cq) == TRUE){
+                byidemean <- 0
+              } else {
+                byidemean <- y$Cq
+              }
+            } else if (div == 0){
+              byidmean <- 0
+            } else if (is.na(div) == TRUE){
               byidmean <- NA
             } else if (div > 1.5){
               byidemean <- "Repeat"
-            } else if (div == 0){
-              byidmean <- 0
             } else {
               byidemean <- format(round(mean(c(y$Cq[1], y$Cq[2])), 3), nsmall = 3)
             }
@@ -5070,8 +5082,12 @@ server <- function(input, output) {
       mean_cq <- lapply(d_g_clean, function(x){
         id <- split(x, x$ID)
         byidmean <- lapply(id, function(y){
+          # Check that duplicates exist (2 rows)
           if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
             div <- NA
+          } else if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1){
+            not0 <- as.numeric(grep("^0$", as.character(y$Cq), invert = TRUE, value = TRUE))
+            div <- abs(not0-not0) 
           } else {
             div <- abs(y$Cq[1]-y$Cq[2])
             if (is.na(div) == TRUE){
@@ -5079,12 +5095,22 @@ server <- function(input, output) {
             }
           }
           
-          if (is.na(div) == TRUE){
-            byidmean <- NA
-          } else if (div >= 1.5){
-            byidemean <- "Repeat"
+          # Check if difference between dups is > 1.5
+          if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1 & div == 0){
+            byidemean <- grep("^0", as.character(y$Cq), invert = TRUE, value = TRUE)
+            byidemean <- as.numeric(byidemean)
+          } else if (length(y$Cq) == 1){
+            if (is.na(y$Cq) == TRUE){
+              byidemean <- 0
+            } else {
+              byidemean <- y$Cq
+            }
           } else if (div == 0){
             byidmean <- 0
+          } else if (is.na(div) == TRUE){
+            byidmean <- NA
+          } else if (div > 1.5){
+            byidemean <- "Repeat"
           } else {
             byidemean <- format(round(mean(c(y$Cq[1], y$Cq[2])), 3), nsmall = 3)
           }
@@ -5978,6 +6004,9 @@ server <- function(input, output) {
             # Check that duplicates exist (2 rows)
             if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
               div <- NA
+            } else if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1){
+              not0 <- as.numeric(grep("^0$", as.character(y$Cq), invert = TRUE, value = TRUE))
+              div <- abs(not0-not0) 
             } else {
               div <- abs(y$Cq[1]-y$Cq[2])
               if (is.na(div) == TRUE){
@@ -5986,12 +6015,21 @@ server <- function(input, output) {
             }
             
             # Check if difference between dups is > 1.5
-            if (is.na(div) == TRUE){
+            if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1 & div == 0){
+              byidemean <- grep("^0", as.character(y$Cq), invert = TRUE, value = TRUE)
+              byidemean <- as.numeric(byidemean)
+            } else if (length(y$Cq) == 1){
+              if (is.na(y$Cq) == TRUE){
+                byidemean <- 0
+              } else {
+                byidemean <- y$Cq
+              }
+            } else if (div == 0){
+              byidmean <- 0
+            } else if (is.na(div) == TRUE){
               byidmean <- NA
             } else if (div > 1.5){
               byidemean <- "Repeat"
-            } else if (div == 0){
-              byidmean <- 0
             } else {
               byidemean <- format(round(mean(c(y$Cq[1], y$Cq[2])), 3), nsmall = 3)
             }
@@ -6432,8 +6470,12 @@ server <- function(input, output) {
         mean_cq <- lapply(d_g_clean, function(x){
           id <- split(x, x$ID)
           byidmean <- lapply(id, function(y){
+            # Check that duplicates exist (2 rows)
             if (is.na(y$Cq[1]) == TRUE & is.na(y$Cq[2]) == TRUE){
               div <- NA
+            } else if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1){
+              not0 <- as.numeric(grep("^0$", as.character(y$Cq), invert = TRUE, value = TRUE))
+              div <- abs(not0-not0) 
             } else {
               div <- abs(y$Cq[1]-y$Cq[2])
               if (is.na(div) == TRUE){
@@ -6441,12 +6483,22 @@ server <- function(input, output) {
               }
             }
             
-            if (is.na(div) == TRUE){
-              byidmean <- NA
-            } else if (div >= 1.5){
-              byidemean <- "Repeat"
+            # Check if difference between dups is > 1.5
+            if (sum(str_count(as.character(y$Cq), pattern = "^0$")) == 1 & div == 0){
+              byidemean <- grep("^0", as.character(y$Cq), invert = TRUE, value = TRUE)
+              byidemean <- as.numeric(byidemean)
+            } else if (length(y$Cq) == 1){
+              if (is.na(y$Cq) == TRUE){
+                byidemean <- 0
+              } else {
+                byidemean <- y$Cq
+              }
             } else if (div == 0){
               byidmean <- 0
+            } else if (is.na(div) == TRUE){
+              byidmean <- NA
+            } else if (div > 1.5){
+              byidemean <- "Repeat"
             } else {
               byidemean <- format(round(mean(c(y$Cq[1], y$Cq[2])), 3), nsmall = 3)
             }
