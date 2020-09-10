@@ -1,0 +1,11 @@
+ID,H30(MeanCt),N(MeanCt),RdRp(MeanCt),S(MeanCt),CtCheck:N,CtCheck:RdRp,CtCheck:S,FinalCtCheck,N(LogCopies),N(Copies),RdRp(LogCopies),RdRp(Copies),S(LogCopies),S(Copies),CopyCheck:N,CopyCheck:RdRp,CopyCheck:S,FinalCopyCheck,Assignment
+1,26.06,35.615,37.530,NA,Check copy number,Check copy number,NA,Check copy number,-0.394,0.404,0.940,8.715,NA,NA,Repeat,Positive,NA,Repeat,Repeat
+2,24.45,35.745,38.185,31.165,Check copy number,Check copy number,Positive,Check copy number,-0.461,0.346,0.785,6.101,2.431,269.627,Repeat,Positive,Positive,Positive,Positive
+3,26,0,34.755,0,Negative,Positive,Negative,Negative,-,-,-,-,-,-,-,-,-,-,Negative
+4,25.91,35.52,Repeat,NA,Check copy number,Repeat,NA,Check copy number,-0.345,0.452,-,-,NA,NA,Repeat,-,NA,Repeat,Repeat
+5,25.175,36.185,Repeat,32.28,Check copy number,Repeat,Positive,Check copy number,-0.688,0.205,-,-,2.173,148.820,Repeat,-,Positive,Repeat,Repeat
+8,25.97,0,0,0,Negative,Negative,Negative,Negative,-,-,-,-,-,-,-,-,-,-,Negative
+9,24.465,38.78,39.02,36.495,Check copy number,Check copy number,Check copy number,Check copy number,-2.026,0.009,0.588,3.873,1.197,15.739,Repeat,Repeat,Positive,Repeat,Repeat
+10,31.27,0,35.74,Repeat,Negative,Check copy number,Repeat,Check copy number,0,0,1.364,23.094,-,-,Negative,Positive,-,Repeat,Repeat
+12,29.49,39.67,34.720,35.150,Check copy number,Positive,Check copy number,Check copy number,-2.484,0.003,1.605,40.240,1.508,32.234,Repeat,Positive,Positive,Positive,Positive
+13,25.875,33.465,Repeat,31.175,Positive,Repeat,Positive,Positive,-,-,-,-,-,-,-,-,-,-,Positive
