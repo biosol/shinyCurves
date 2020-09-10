@@ -3277,7 +3277,7 @@ server <- function(input, output) {
       })
     })
     
-   ## Download Plots (Handler)
+    ## Download Plots (Handler)
     lapply(nbgenes, function(x){
       output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
         filename = paste(genes[x],"_IndetPlots.pdf",sep=""),
