@@ -2968,7 +2968,7 @@ server <- function(input, output) {
   
   
   
-  ################## CT CURVES - TAQMAN ##################
+  ################## AMPLIFICATION CURVES - TAQMAN ##################
   ############################################
   
   ################## Read CSVs: Taqman ############################
@@ -3104,19 +3104,63 @@ server <- function(input, output) {
       ###plot
       pltName <- paste(genes[i])
       merge$cols <- ifelse(merge$Interpretation == "Negative", 'tomato', ifelse(merge$Interpretation == "Positive", "green3", "blue"))
-      pltList[[ pltName ]] = ggplot(data = merge)+
+      'pltList[[ pltName ]] = ggplot(data = merge)+
         geom_line(aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
         scale_color_manual(values = c("tomato", "green3", "blue"))+
         ylim(-100, lr[[1]])+ # manually adjust after seeing plot scale - keep same for all plots
-        ggtitle(pltName)
-    }
+        ggtitle(pltName)'
+      merge <- arrange(merge, Well2)
+      res <- unique(as.character(merge$Interpretation))
+      merge2 <- split(merge, merge$Well2)
+      color_map <- c(Positive="green3", Negative="tomato", Repeat="blue")
+      # Launch plot
+      p <- plot_ly()
+      interp <- c(Positive = 0, Negative = 0, Repeat = 0)
+      # Start loop for subdataframes split by well
+      for (j in merge2){
+        assig <- as.character(unique(j$Interpretation))
+        #Show legend only the first time an Interpretation appears
+        show_legend <- if (i == 1){
+          if(interp[assig] == 0){
+            TRUE
+          } else {
+            FALSE
+          }
+        } else if (i > 1){
+          FALSE
+        }
+        ## Plot: add trace for each well
+        p <- p %>% add_trace(x=j$Cycles, y=j$RFU,
+                       mode = "lines", type = "scatter",
+                       color = j$Interpretation,
+                       colors = color_map,
+                       showlegend = show_legend,
+                       text = paste("Sample:", unique(as.character(j$ID)),
+                            "</br> Well:", unique(as.character(j$Well2)),
+                            "</br> RFU:",j$RFU,
+                            "</br> Interpretation:",unique(as.character(j$Interpretation))))
+        
+      interp[assig] <- interp[assig]+1
+      }
+      
+      p <- p %>% layout(annotations = list(x = 5, y=max(merge$RFU),
+                                       text = sprintf("<b>%s</b>",pltName),
+                                       showarrow = F,
+                                       font = list(size = 20, type = "bold")),
+                                       xaxis = list(title="Cycles"), 
+                                       yaxis = list(title = "RFU"))
+      
+      pltList[[ pltName ]] <- p
+      
+    } 
     return(pltList)
   }
   
   # Render
-  output$genplots <- renderPlot({
+  output$genplots <- renderPlotly({
     plots <- generalPlots()
-    plot_grid(plotlist = plots, ncol = 1)
+    subplot(plots, nrows = length(plots), margin = 0.04, titleX = T, titleY = T)
+    #plot_grid(plotlist = plots, ncol = 1)
   })
   
   output$downgen <- downloadHandler(
@@ -3158,24 +3202,37 @@ server <- function(input, output) {
         mes <- "No indetermined samples to plot"
         return(mes)
       } else {
-      ## Plots
-      pltList <- list()
-      for (z in 1:length(merge_r_persample)){
-        pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]], sep = "")
-        merge_pn$cols <- ifelse(merge_pn$Interpretation == "Negative", 'tomato', ifelse(merge_pn$Interpretation == "Positive", "green3", "blue"))
-        pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
-          geom_line()+
-          geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
-          scale_color_manual(values = c("tomato", "green3", "blue"))+
-          ylim(-100, lr[[1]])+ 
-          theme(legend.position = "none")+ 
-          ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))
-      }
+        ## Plots
+        pltList <- list()
+        for (z in 1:length(merge_r_persample)){
+          pltName <- paste(genes[i],"_",names(merge_r_persample)[[z]], sep = "")
+          merge_pn$cols <- ifelse(merge_pn$Interpretation == "Negative", 'tomato', ifelse(merge_pn$Interpretation == "Positive", "green3", "blue"))
+          pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation, text = paste("Sample:", ID))) +
+            geom_line()+
+            geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+            scale_color_manual(values = c("tomato", "green3", "blue"))+
+            ylim(-100, lr[[1]])+
+            theme_minimal()+
+            annotate("text", x=5, y=lr[[1]],
+                     label = pltName, size = 5, fontface = "bold")
+        }
+        pltList[[pltName]] <- hide_legend(pltList[[pltName]])
         defPltLs[[i]] <- pltList
       }
     }
     return(defPltLs) 
   }
+  'pltList[[pltName]] <- ggplot(data = merge_pn, aes(x=Cycles, y=RFU, by=Well2, color=Interpretation)) +
+            geom_line()+
+            geom_line(data = merge_r_persample[[z]], aes(x=Cycles, y=RFU, by=Well2, color=Interpretation))+
+            scale_color_manual(values = c("tomato", "green3", "blue"))+
+            ylim(-100, lr[[1]])+ 
+            theme(legend.position = "none")+ 
+            annotate("text", x=5, y=lr[[1]],
+                     label = pltName, size = 5, fontface = "bold")+
+            #ggtitle(paste(genes[i],"_",names(merge_r_persample)[[z]]))+
+            theme_minimal()'
+  
   
   ### Generate # tabs with X names depeding on user input files
   output$indetplots <- renderUI({
@@ -3186,7 +3243,7 @@ server <- function(input, output) {
         title=uiOutput(x), 
         textOutput(paste("text",x,sep="")), 
         uiOutput(paste("down",x,sep="")), 
-        plotOutput(paste("indet",x,sep=""), height = "500px")
+        plotlyOutput(paste("indet",x,sep=""), height = "500px")
       )
     })
     
@@ -3202,7 +3259,6 @@ server <- function(input, output) {
       output[[paste("text",x,sep="")]] <- renderText({
         ls <- indetPlots()
         if (is.list(ls) == FALSE){
-          print(ls)
         } else {
           print(NULL)
         } 
@@ -3210,7 +3266,7 @@ server <- function(input, output) {
     })
     
     ## Download Plots (Button)
-    lapply(genes, function(x){
+    'lapply(genes, function(x){
       output[[paste("down",x,sep="")]] <- renderUI({
         ls <- indetPlots()
         if (is.list(ls) == TRUE){
@@ -3221,7 +3277,7 @@ server <- function(input, output) {
       })
     })
     
-    ## Download Plots (Handler)
+   ## Download Plots (Handler)
     lapply(nbgenes, function(x){
       output[[paste("downl",genes[x],sep="")]] <- downloadHandler(
         filename = paste(genes[x],"_IndetPlots.pdf",sep=""),
@@ -3231,14 +3287,15 @@ server <- function(input, output) {
           save_plot(file, p, ncol = 1, base_height = 6, base_width = 8)
         }
       )
-    })
+    })'
     
     ## Render Plots
     lapply(nbgenes, function(x){
-      output[[paste("indet",genes[x],sep="")]] <- renderPlot({
+      output[[paste("indet",genes[x],sep="")]] <- renderPlotly({
         plots <- indetPlots()
-        if (is.list(plots) == TRUE){
-          plot_grid(plotlist = plots[[x]], ncol = 2)
+        if (is.list(plots[[x]]) == TRUE){
+          #plot_grid(plotlist = plots[[x]], ncol = 2)
+          subplot(plots[[x]], nrows = length(plots[[x]]))#, margin = 0.04, titleX = T, titleY = T)
         } else {
         }
       })
@@ -3247,14 +3304,7 @@ server <- function(input, output) {
     do.call(tabsetPanel,c(tabs))
     
   })
-  
-  
-    
-  
-  
-  
-  
-  
+
   ################### MELTING CURVE - SYBR #########################
   ###############################################
   

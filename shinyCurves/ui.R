@@ -19,6 +19,7 @@ library("janitor")
 library("shinyWidgets")
 library("ggpubr")
 library("stringi")
+library("plotly")
 ################################# SHINY APP (COMPLETE) FOR QPCR ANALYSIS ############################################
 ########################### Sonia Olaechea-Lázaro (UPV/EHU, May 2020) ############################################  
 ui <- fluidPage(
@@ -34,7 +35,7 @@ ui <- fluidPage(
                   multiple = TRUE),
         textInput("endocbiorad", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocbiorad", "Maximum cycle number for endogenous control", value = 35),
-        numericInput("posctrlbiorad", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("posctrlbiorad", "How many serial dilutions are you using for the standard curves?", value = 4),
         numericInput("concstdbiorad", "Enter standard concentration", value = 400000),
         numericInput("minctbiorad", "Sample is considered 'Positive' with Ct below:", value = 35),
         numericInput("cyclesbiorad", "What is your maximum cycle number?", value = 40),
@@ -53,7 +54,7 @@ ui <- fluidPage(
                   multiple = TRUE),
         textInput("endocapplied", "Endogenous control", value = "RNAseP"),
         numericInput("maxendocapplied", "Maximum cycle number for endogenous control", value = 35),
-        numericInput("posctrlapplied", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("posctrlapplied", "How many serial dilutions are you using for the standard curves?", value = 4),
         numericInput("concstdapplied", "Enter standard concentration", value = 400000),
         numericInput("minctapplied", "Sample is considered 'Positive' with Ct below:", value = 35),
         numericInput("cyclesapplied", "What is your maximum cycle number?", value = 40),
@@ -80,7 +81,7 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.meltsybr == true",
         fileInput("sybrcsv",
-                  label="Upload Melt Curve RFU results (Biorad/Applied) here ",
+                  label="Upload Melt Curves RFU results (Biorad/Applied) here ",
                   multiple = TRUE),
         fileInput("sybrinp", 
                   label = "Upload Quantification Results (Biorad/Applied) here",
@@ -102,7 +103,7 @@ ui <- fluidPage(
         fileInput("idwellsybr", label = "Upload ID_well here", multiple = FALSE),
         textInput("endocsybr", "Endogenous control", value = "H30"),
         numericInput("maxendocsybr", "Maximum cycle number for endogenous control", value = 35),
-        numericInput("posctrlsybr", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("posctrlsybr", "How many serial dilutions are you using for the standard curves?", value = 4),
         numericInput("concstdsybr", "Enter standard concentration", value = 400000),
         numericInput("minctsybr", "Sample is considered 'Positive' with Ct below:", value = 35),
         numericInput("cyclessybr", "What is your maximum cycle number?", value = 40),
@@ -122,7 +123,7 @@ ui <- fluidPage(
         fileInput("idwellsybrapp", label = "Upload ID_well here", multiple = FALSE),
         textInput("endocsybrapp", "Endogenous control", value = "H30"),
         numericInput("maxendocsybrapp", "Maximum cycle number for endogenous control", value = 35),
-        numericInput("posctrlsybrapp", "How many SERIAL DILUTIONS are you using for the standard curve?", value = 4),
+        numericInput("posctrlsybrapp", "How many serial dilutions are you using for the standard curves?", value = 4),
         numericInput("concstdsybrapp", "Enter standard concentration", value = 400000),
         numericInput("minctsybrapp", "Sample is considered 'Positive' with Ct below:", value = 35),
         numericInput("cyclessybrapp", "What is your maximum cycle number?", value = 40),
@@ -147,7 +148,7 @@ ui <- fluidPage(
           tabPanel("Run Information", tableOutput("BRruninfo")),
           tabPanel("Ct Plate", dataTableOutput("ctplate")),
           tabPanel("Sample Plate", dataTableOutput("sampleplate")),
-          tabPanel("Standard Curve", fluidRow(tableOutput("stdcurve"), plotOutput("std"))),
+          tabPanel("Standard Curves", fluidRow(tableOutput("stdcurve"), plotOutput("std"))),
           tabPanel("Analysis", downloadButton("downanbiorad", "Download CSV"),dataTableOutput("analysis")),
           tabPanel("ID_Well", downloadButton("downIDWELL", "Download CSV"), tableOutput("IDWELL")),
           tabPanel("ID_Result",downloadButton("downidres", "Download CSV"), tableOutput("IDRESULT"))
@@ -165,7 +166,7 @@ ui <- fluidPage(
           tabPanel("Applied Results", tableOutput("appliedres")),
           tabPanel("Ct Plate", dataTableOutput("ctplateapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplateapp")),
-          tabPanel("Standard Curve", tableOutput("stdcurveapp"), plotOutput("stdapp")),
+          tabPanel("Standard Curves", tableOutput("stdcurveapp"), plotOutput("stdapp")),
           tabPanel("Analysis", downloadButton("downanapplied", "Download CSV"),dataTableOutput("analysisapp")),
           tabPanel("ID Well", downloadButton("downidwellapp", "Download CSV"),tableOutput("IDWELLApp")),
           tabPanel("ID Result", downloadButton("downidresapp", "Download CSV"),tableOutput("IDRESULTApp"))
@@ -179,7 +180,7 @@ ui <- fluidPage(
           type = "tabs",
           tabPanel("ID_Well", tableOutput("taqmanwell")),
           tabPanel("ID_Result", tableOutput("taqmanidres")),
-          tabPanel("General Plots", downloadButton("downgen", "Download PDF"), plotOutput("genplots", height = "1000px")),
+          tabPanel("General Plots", plotlyOutput("genplots", height = "1000px")), #downloadButton("downgen", "Download PDF"), 
           tabPanel("Indetermined Samples", uiOutput("indetplots"))
         )
       ),
@@ -191,7 +192,7 @@ ui <- fluidPage(
           id = "syb",
           type = "tabs",
           tabPanel("ID_Well", tableOutput("rawidwell")),
-          tabPanel("Melting Curve Plots", uiOutput("tmplots")),
+          tabPanel("Melting Curves Plots", uiOutput("tmplots")),
           tabPanel("TM Table", downloadButton("downloadtable", "Download CSV"), tableOutput("tmtable")),
           tabPanel("New ID_Well", downloadButton("downnewidwell", "Download CSV"), tableOutput("newidwell"))
         )
@@ -206,7 +207,7 @@ ui <- fluidPage(
           tabPanel("Raw Data", tableOutput("sybrdata")),
           tabPanel("Ct Plate", dataTableOutput("ctplatesybr")),
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybr")),
-          tabPanel("Standard Curve", tableOutput("stdcurvesybr"), plotOutput("stdsybr")),
+          tabPanel("Standard Curves", tableOutput("stdcurvesybr"), plotOutput("stdsybr")),
           tabPanel("Analysis", downloadButton("downansybr", "Download CSV"), dataTableOutput("analysissybr")),
           tabPanel("ID_Result", downloadButton("downIDRESsybr", "Download CSV"), tableOutput("IDRESsybr"))
         )
@@ -222,7 +223,7 @@ ui <- fluidPage(
           tabPanel("Raw Data", tableOutput("sybrdataapp")),
           tabPanel("Ct Plate", dataTableOutput("ctplatesybrapp")),
           tabPanel("Sample Plate", dataTableOutput("sampleplatesybrapp")),
-          tabPanel("Standard Curve", tableOutput("stdcurvesybrapp"), plotOutput("stdsybrapp")),
+          tabPanel("Standard Curves", tableOutput("stdcurvesybrapp"), plotOutput("stdsybrapp")),
           tabPanel("Analysis", downloadButton("downansybrapp", "Download CSV"), dataTableOutput("analysissybrapp")),
           tabPanel("ID_Result", downloadButton("downIDRESsybrapp", "Download CSV"), tableOutput("IDRESsybrapp"))
         )
