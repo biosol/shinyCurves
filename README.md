@@ -1,9 +1,5 @@
 # shinyCurves
-shinyCurves is a fast and flexible shiny application built with the aim of helping users analyse their diagnostic qRT-PCR data. 
-Data coming from either Taqman or SYBR Green methods are accepted and users can choose also Biorad or Applied Quant Studio as PCR system.
-
-shinyCurves offers as well the possibility to plot either Amplification Curves in Taqman analysis or Melting Curves in SYBR analysis. 
-Plotly interactive plots are included, facilitating data interpretation.
+Quantitative RT-PCR amplification has been the gold-standard tool for viral detection during the SARS-CoV-2 pandemic. However, the desperate rush for a quick diagnosis led the use of very different types of machines and proprietary software, leading thus to an unbearable complexity of data analysis with a limited parameter setup. Here, we present shinyCurves, a shiny web application created to analyse multisource qPCR amplification data from independent multi-plate format. Furthermore, our automated system allows the classification of the results as well as the plot of both amplification and melting curves. Altogether, our web application is an automated qPCR analysis resource available to the research community.
 
 # Availability
 shinyCurves is available as a web application at https://biosol.shinyapps.io/shinycurves/
